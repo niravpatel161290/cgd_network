@@ -1,0 +1,1952 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Altrex Grid — CGD Asset Management Console</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+:root{
+  --cgs:#64748b; --drs:#06b6d4; --mother:#14b8a6; --daughter:#8b5cf6; --lng:#3b82f6; --png:#22c55e;
+  --alert:#e6435f; --warn:#d6a52a; --ok:#2bb673;
+  --font-display:'IBM Plex Sans', Arial, sans-serif;
+  --font-mono:'IBM Plex Mono','Courier New', monospace;
+  --radius:10px; --sidebar-w:235px;
+}
+html[data-theme="dark"]{
+  --bg:#090b0d; --panel:#10141a; --panel-2:#161b22; --panel-3:#1b2129;
+  --line:#222a33; --text:#dde2e7; --text-dim:#aab1b9; --muted:#6c7480;
+  --shadow:0 8px 24px rgba(0,0,0,.35); --sidebar-bg:#0b0e12; --topbar-bg:rgba(9,11,13,.85);
+}
+html[data-theme="light"]{
+  --bg:#f2f3f5; --panel:#ffffff; --panel-2:#fafbfc; --panel-3:#f0f2f4;
+  --line:#e2e5ea; --text:#1a1f26; --text-dim:#454e58; --muted:#78808a;
+  --shadow:0 4px 18px rgba(20,30,40,.07); --sidebar-bg:#151a20; --topbar-bg:rgba(255,255,255,.85);
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{height:100%;}
+body{background:var(--bg); color:var(--text); font-family:var(--font-display); display:flex; min-height:100vh;}
+a{color:inherit; text-decoration:none;}
+::-webkit-scrollbar{width:6px; height:6px;}
+::-webkit-scrollbar-thumb{background:var(--line); border-radius:6px;}
+
+/* ===== Sidebar ===== */
+.sidebar{width:var(--sidebar-w); flex-shrink:0; background:var(--sidebar-bg); border-right:1px solid rgba(255,255,255,.06);
+  display:flex; flex-direction:column; padding:18px 14px; position:fixed; left:0; top:0; height:100vh; z-index:40; transition:width .2s ease; overflow-y:auto;}
+.sidebar.collapsed{width:66px; padding:18px 10px;}
+.brand{display:flex; align-items:center; gap:10px; padding:4px 6px 16px; position:relative;}
+.brand .mark{width:32px; height:32px; border-radius:8px; flex-shrink:0; background:linear-gradient(135deg,#3b82f6,#22c55e);
+  display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-weight:700; color:#04150c; font-size:12px;}
+.brand-text h1{font-size:14px; color:#fff; font-weight:600;}
+.brand-text p{font-size:9.5px; color:#8a929c; font-family:var(--font-mono); margin-top:1px;}
+.sidebar.collapsed .brand-text{display:none;}
+.sidebar.collapsed .brand{justify-content:center;}
+.collapse-btn{position:absolute; top:20px; right:-11px; width:22px; height:22px; border-radius:50%; background:var(--panel-2);
+  border:1px solid var(--line); display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text-dim); z-index:5;}
+.collapse-btn svg{width:12px; height:12px; transition:transform .2s;}
+.sidebar.collapsed .collapse-btn svg{transform:rotate(180deg);}
+.navgroup{margin-top:6px;}
+.navgroup .glabel{font-size:9.5px; text-transform:uppercase; letter-spacing:.8px; color:#5d6570; padding:11px 10px 5px; font-family:var(--font-mono);}
+.sidebar.collapsed .glabel{display:none;}
+.navitem{display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:7px; color:#aab1b9; font-size:12.5px;
+  cursor:pointer; margin-bottom:1px; transition:background .15s,color .15s; position:relative;}
+.navitem svg{width:15px; height:15px; flex-shrink:0; opacity:.85;}
+.navitem:hover{background:rgba(255,255,255,.05); color:#fff;}
+.navitem.active{background:rgba(255,255,255,.08); color:#fff;}
+.navitem.active::before{content:''; position:absolute; left:-14px; top:7px; bottom:7px; width:3px;
+  background:linear-gradient(var(--lng),var(--png)); border-radius:0 3px 3px 0;}
+.navitem .badge-count{margin-left:auto; font-family:var(--font-mono); font-size:9.5px; background:rgba(244,63,94,.18); color:#ff8095; padding:1px 6px; border-radius:8px;}
+.sidebar.collapsed .navitem span:not(.badge-count){display:none;}
+.sidebar.collapsed .navitem .badge-count{display:none;}
+.sidebar.collapsed .navitem{justify-content:center;}
+.sidebar.collapsed .navitem:hover::after{content:attr(data-label); position:absolute; left:58px; top:50%; transform:translateY(-50%);
+  background:#1c2228; color:#fff; padding:5px 10px; border-radius:6px; font-size:11px; white-space:nowrap; box-shadow:0 4px 14px rgba(0,0,0,.3); z-index:30;}
+.sidebar-foot{margin-top:auto; padding-top:12px; border-top:1px solid rgba(255,255,255,.06);}
+.user-row{display:flex; align-items:center; gap:9px; padding:8px 6px; border-radius:8px;}
+.avatar{width:28px; height:28px; border-radius:50%; background:linear-gradient(135deg,#3b82f6,#22c55e); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600; color:#04150c; font-family:var(--font-mono);}
+.user-row .uname{font-size:12px; color:#dde2e7; font-weight:500;}
+.user-row .urole{font-size:10px; color:#8a929c;}
+.sidebar.collapsed .user-row .uname, .sidebar.collapsed .user-row .urole{display:none;}
+
+/* ===== Main ===== */
+.main{flex:1; min-width:0; display:flex; flex-direction:column; margin-left:var(--sidebar-w); transition:margin-left .2s ease;}
+body.sidebar-collapsed .main{margin-left:66px;}
+.topbar{position:sticky; top:0; z-index:50; backdrop-filter:blur(10px); background:var(--topbar-bg); border-bottom:1px solid var(--line);
+  padding:13px 26px; display:flex; align-items:center; justify-content:space-between; gap:20px;}
+.crumb{font-size:13px; color:var(--text-dim);}
+.crumb b{color:var(--text); font-weight:600;}
+.topbar-right{display:flex; align-items:center; gap:10px;}
+.hamburger{display:none;}
+.searchbox{display:flex; align-items:center; gap:7px; background:var(--panel-3); border:1px solid var(--line); border-radius:8px; padding:7px 11px; font-size:12px; color:var(--muted); width:220px;}
+.searchbox svg{width:14px; height:14px; opacity:.7;}
+.searchbox input{background:none; border:none; outline:none; color:var(--text); font-size:12px; width:100%; font-family:var(--font-display);}
+.iconbtn{width:34px; height:34px; border-radius:8px; border:1px solid var(--line); background:var(--panel-3); display:flex; align-items:center; justify-content:center; cursor:pointer; position:relative; color:var(--text-dim);}
+.iconbtn:hover{background:var(--panel-2); color:var(--text);}
+.iconbtn svg{width:16px; height:16px;}
+.iconbtn .ping{position:absolute; top:6px; right:7px; width:6px; height:6px; border-radius:50%; background:var(--alert); display:none;}
+.theme-toggle{display:flex; align-items:center; background:var(--panel-3); border:1px solid var(--line); border-radius:999px; padding:3px; gap:2px;}
+.theme-toggle button{border:none; background:none; padding:5px 9px; border-radius:999px; cursor:pointer; color:var(--muted); display:flex; align-items:center; gap:5px; font-size:11px; font-family:var(--font-mono);}
+.theme-toggle button svg{width:13px; height:13px;}
+.theme-toggle button.active{background:var(--panel); color:var(--text); box-shadow:0 1px 3px rgba(0,0,0,.15);}
+
+.content{padding:22px 26px 40px; flex:1;}
+.view{display:none; animation:fadein .3s ease;}
+.view.active{display:block;}
+@keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+.page-head{display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:12px;}
+.page-head h2{font-size:20px; font-weight:600; letter-spacing:-.2px;}
+.page-head p{font-size:12.5px; color:var(--muted); margin-top:4px;}
+.live-dot{display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--ok); margin-right:7px; box-shadow:0 0 0 0 rgba(43,182,115,.6); animation:pulse 1.8s infinite;}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(43,182,115,.55);}70%{box-shadow:0 0 0 7px rgba(43,182,115,0);}100%{box-shadow:0 0 0 0 rgba(43,182,115,0);}}
+.live-tag{font-family:var(--font-mono); font-size:11px; color:var(--muted);}
+.btn{font-size:12.5px; font-weight:500; padding:9px 15px; border-radius:8px; border:1px solid var(--line); background:var(--panel-2); color:var(--text); cursor:pointer;}
+.btn:hover{background:var(--panel-3);}
+.btn.primary{background:linear-gradient(135deg,#3b82f6,#22c55e); border:none; color:#04150c; font-weight:600;}
+.btn svg{width:13px; height:13px; vertical-align:-2px; margin-right:5px;}
+
+/* KPI */
+.kpis{display:grid; grid-template-columns:repeat(5,1fr); gap:13px; margin-bottom:18px;}
+.kpi{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:15px 16px; position:relative; overflow:hidden; box-shadow:var(--shadow);}
+.kpi .accent{position:absolute; left:0; top:0; bottom:0; width:3px;}
+.kpi .label{font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.7px; font-family:var(--font-mono);}
+.kpi .value{font-family:var(--font-mono); font-size:22px; font-weight:600; margin-top:7px;}
+.kpi .delta{font-size:11px; margin-top:5px; font-family:var(--font-mono);}
+.kpi .delta.up{color:var(--ok);} .kpi .delta.down{color:var(--alert);}
+
+.panel{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:17px; box-shadow:var(--shadow); position:relative; overflow:hidden; min-width:0;}
+.panel h3{font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin-bottom:14px; display:flex; align-items:center; justify-content:space-between;}
+.panel h3 span.tag{font-family:var(--font-mono); font-size:10px; color:var(--text); background:var(--panel-3); padding:2px 7px; border-radius:5px; border:1px solid var(--line);}
+.grid2{display:grid; grid-template-columns:1.5fr 1fr; gap:14px;}
+.grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:14px;}
+canvas{max-height:230px; width:100% !important;}
+
+.feed{display:flex; flex-direction:column; max-height:330px; overflow-y:auto;}
+.ev{display:grid; grid-template-columns:58px 9px 1fr; gap:10px; align-items:start; padding:9px 2px; border-bottom:1px solid var(--line); font-size:12px; animation:slidein .35s ease;}
+@keyframes slidein{from{opacity:0; transform:translateY(-6px);} to{opacity:1; transform:translateY(0);}}
+.ev .t{font-family:var(--font-mono); color:var(--muted); font-size:10.5px; padding-top:2px;}
+.ev .b{width:7px; height:7px; border-radius:50%; margin-top:5px;}
+.ev .msg b{font-weight:600;}
+.ev .msg .meta{color:var(--muted); font-size:10.5px; display:block; margin-top:2px; font-family:var(--font-mono);}
+
+table{width:100%; border-collapse:collapse; font-size:12px;}
+th{text-align:left; font-family:var(--font-mono); font-size:10px; color:var(--muted); text-transform:uppercase; padding:8px; border-bottom:1px solid var(--line); letter-spacing:.5px;}
+td{padding:9px 8px; border-bottom:1px solid var(--line); font-family:var(--font-mono); font-size:11.5px;}
+tr:hover td{background:var(--panel-2); cursor:pointer;}
+.badge{padding:2px 7px; border-radius:5px; font-size:10px; font-family:var(--font-mono);}
+.badge.ok{background:rgba(43,182,115,.13); color:var(--ok);}
+.badge.warn{background:rgba(214,165,42,.15); color:var(--warn);}
+.badge.alert{background:rgba(230,67,95,.13); color:var(--alert);}
+.badge.cgs{background:rgba(100,116,139,.18); color:var(--cgs);}
+.badge.drs{background:rgba(6,182,212,.15); color:var(--drs);}
+.badge.mother{background:rgba(20,184,166,.15); color:var(--mother);}
+.badge.daughter{background:rgba(139,92,246,.15); color:var(--daughter);}
+.badge.lng{background:rgba(59,130,246,.15); color:var(--lng);}
+.badge.png{background:rgba(34,197,94,.15); color:var(--png);}
+.flow{font-weight:600;}
+
+.statrow{display:grid; grid-template-columns:repeat(4,1fr); gap:13px; margin-bottom:16px;}
+.stat{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; box-shadow:var(--shadow);}
+.stat .label{font-size:10.5px; color:var(--muted); font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.6px;}
+.stat .value{font-family:var(--font-mono); font-size:21px; font-weight:600; margin-top:6px;}
+
+.zonebar-row{display:flex; align-items:center; gap:10px; margin-bottom:10px;}
+.zonebar-row .zname{width:140px; font-size:11.5px; color:var(--text-dim); flex-shrink:0;}
+.zonebar-track{flex:1; height:8px; background:var(--panel-3); border-radius:6px; overflow:hidden; position:relative;}
+.zonebar-fill{height:100%; border-radius:6px; position:absolute; left:0; top:0;}
+.zonebar-val{width:100px; text-align:right; font-family:var(--font-mono); font-size:10.5px; color:var(--muted);}
+
+/* GA card */
+.ga-cards{display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:14px; margin-bottom:18px;}
+.ga-card{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow); cursor:pointer; transition:border-color .15s;}
+.ga-card:hover{border-color:var(--lng);}
+.ga-card .gc-name{font-size:14px; font-weight:600; margin-bottom:2px;}
+.ga-card .gc-sub{font-size:10.5px; color:var(--muted); font-family:var(--font-mono); margin-bottom:12px;}
+.ga-card .gc-io{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;}
+.ga-card .gc-io .item{background:var(--panel-3); border-radius:8px; padding:8px 10px;}
+.ga-card .gc-io .item .l{font-size:9px; color:var(--muted); font-family:var(--font-mono); text-transform:uppercase;}
+.ga-card .gc-io .item .v{font-family:var(--font-mono); font-size:14px; font-weight:600; margin-top:3px;}
+.ga-card .gc-laug{display:flex; align-items:center; justify-content:space-between; font-family:var(--font-mono); font-size:11px;}
+.ga-card .gc-counts{display:flex; gap:10px; margin-top:10px; font-family:var(--font-mono); font-size:10px; color:var(--muted); flex-wrap:wrap;}
+
+/* Equipment status list */
+.equip-list{display:flex; flex-direction:column; gap:8px;}
+.equip-row{display:flex; align-items:center; gap:10px; background:var(--panel-3); border:1px solid var(--line); border-radius:8px; padding:9px 11px;}
+.equip-row .eq-icon{width:28px; height:28px; border-radius:7px; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+.equip-row .eq-icon svg{width:14px; height:14px;}
+.equip-row .eq-name{font-size:11.5px; font-weight:500; flex:1;}
+.equip-row .eq-meta{font-family:var(--font-mono); font-size:10.5px; color:var(--muted);}
+.equip-row .eq-status-dot{width:7px; height:7px; border-radius:50%; flex-shrink:0;}
+
+/* Bay grid (reused) */
+.bay-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(84px,1fr)); gap:8px;}
+.bay-cell{background:var(--panel-3); border:1px solid var(--line); border-radius:8px; padding:9px 7px; text-align:center;}
+.bay-cell .bc-status{font-family:var(--font-mono); font-size:8.5px; text-transform:uppercase; color:var(--muted);}
+.bay-cell .bc-fill{height:5px; background:var(--panel); border-radius:3px; overflow:hidden; margin:5px 0;}
+.bay-cell .bc-fill-inner{height:100%; border-radius:3px;}
+.bay-cell .bc-pct{font-family:var(--font-mono); font-size:10.5px; font-weight:600;}
+.bay-cell.empty{opacity:.4;}
+
+/* Map */
+#assetMap{width:100%; height:580px; border-radius:var(--radius); border:1px solid var(--line); background:var(--panel-2);}
+.leaflet-popup-content-wrapper{background:var(--panel); color:var(--text); border-radius:8px;}
+.leaflet-popup-tip{background:var(--panel);}
+.map-legend{display:flex; gap:14px; margin-top:12px; font-size:10px; color:var(--muted); font-family:var(--font-mono); flex-wrap:wrap;}
+.map-legend i{width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:5px;}
+.map-legend i.sq{border-radius:2px;}
+.meter-hover-tip{background:var(--panel) !important; color:var(--text) !important; border:1px solid var(--line) !important;
+  border-radius:8px !important; padding:8px 11px !important; font-family:var(--font-display); box-shadow:var(--shadow); opacity:1 !important;}
+.meter-hover-tip::before{display:none !important;}
+.meter-hover-tip .ht-title{font-weight:600; font-size:12.5px; margin-bottom:3px;}
+.meter-hover-tip .ht-row{display:flex; justify-content:space-between; gap:14px; font-family:var(--font-mono); font-size:10.5px; color:var(--muted); margin-top:2px;}
+
+/* Lists / grids */
+.toolbar{display:flex; align-items:center; gap:10px; margin-bottom:16px; flex-wrap:wrap;}
+.toolbar .seg{display:flex; background:var(--panel-3); border:1px solid var(--line); border-radius:8px; padding:3px;}
+.toolbar .seg button{border:none; background:none; padding:7px 13px; border-radius:6px; cursor:pointer; color:var(--muted); font-size:12px; font-family:var(--font-display);}
+.toolbar .seg button.active{background:var(--panel); color:var(--text);}
+.toolbar select, .toolbar input{padding:8px 11px; border-radius:8px; background:var(--panel-3); border:1px solid var(--line); color:var(--text); font-size:12px; font-family:var(--font-display); outline:none;}
+.city-section{margin-bottom:22px;}
+.city-section-head{display:flex; align-items:center; gap:10px; margin-bottom:10px;}
+.city-section-head h4{font-size:13.5px; font-weight:600;}
+.city-section-head .count{font-family:var(--font-mono); font-size:10.5px; color:var(--muted); background:var(--panel-3); padding:2px 8px; border-radius:6px; border:1px solid var(--line);}
+.meter-cards{display:grid; grid-template-columns:repeat(auto-fill, minmax(220px,1fr)); gap:10px;}
+.meter-card{background:var(--panel); border:1px solid var(--line); border-radius:9px; padding:13px; cursor:pointer; transition:border-color .15s;}
+.meter-card:hover{border-color:var(--lng);}
+.meter-card .mc-top{display:flex; justify-content:space-between; align-items:flex-start;}
+.meter-card .mc-id{font-family:var(--font-mono); font-size:12px; font-weight:600;}
+.meter-card .mc-flow{font-family:var(--font-mono); font-size:22px; font-weight:600; margin-top:8px;}
+.meter-card .mc-flow span{font-size:10px; color:var(--muted); font-weight:400;}
+.meter-card .mc-meta{font-size:10px; color:var(--muted); margin-top:6px; font-family:var(--font-mono);}
+
+/* Drawer */
+.drawer-overlay{position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:9000; display:none;}
+.drawer-overlay.open{display:block;}
+.drawer{position:fixed; top:0; right:0; height:100%; width:460px; background:var(--panel); border-left:1px solid var(--line);
+  box-shadow:-12px 0 30px rgba(0,0,0,.3); z-index:9001; transform:translateX(100%); transition:transform .25s ease; padding:22px; overflow-y:auto;}
+.drawer.open{transform:translateX(0);}
+.drawer-head{display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:16px;}
+.drawer-head .did{font-size:17px; font-weight:600;}
+.drawer-head .dsub{font-size:11.5px; color:var(--muted); margin-top:3px;}
+.drawer-close{cursor:pointer; color:var(--muted); font-size:14px; padding:5px 8px; border-radius:6px;}
+.drawer-close:hover{background:var(--panel-3); color:var(--text);}
+.d-stats{display:grid; grid-template-columns:1fr 1fr; gap:9px; margin:16px 0;}
+.d-stats .ds{background:var(--panel-3); border:1px solid var(--line); border-radius:8px; padding:10px 11px;}
+.d-stats .ds .l{font-size:9.5px; color:var(--muted); font-family:var(--font-mono); text-transform:uppercase;}
+.d-stats .ds .v{font-family:var(--font-mono); font-size:14.5px; font-weight:600; margin-top:3px;}
+.d-section-title{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; font-family:var(--font-mono); margin:16px 0 8px;}
+
+/* Alarms */
+.sev-filter{display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;}
+.sev-chip{font-family:var(--font-mono); font-size:11px; padding:7px 13px; border-radius:7px; background:var(--panel); border:1px solid var(--line); color:var(--muted); cursor:pointer;}
+.sev-chip.active{color:var(--text); background:var(--panel-2); box-shadow:var(--shadow);}
+.ack-btn{font-size:10.5px; padding:4px 9px; border-radius:6px; border:1px solid var(--line); background:var(--panel-3); color:var(--text); cursor:pointer;}
+.ack-btn:hover{background:var(--panel-2);}
+.ack-btn.done{opacity:.4; pointer-events:none;}
+
+/* Reports */
+.report-cards{display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px;}
+.report-card{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:18px; box-shadow:var(--shadow);}
+.report-card .ricon{width:38px; height:38px; border-radius:9px; background:rgba(59,130,246,.13); color:var(--lng); display:flex; align-items:center; justify-content:center; margin-bottom:12px;}
+.report-card .ricon svg{width:19px; height:19px;}
+.report-card h4{font-size:14px; font-weight:600; margin-bottom:5px;}
+.report-card p{font-size:11.5px; color:var(--muted); margin-bottom:14px; line-height:1.5;}
+
+.settings-card{display:flex; align-items:center; justify-content:space-between; padding:14px 4px; border-bottom:1px solid var(--line);}
+.settings-card:last-child{border-bottom:none;}
+.settings-card .t{font-size:13px; font-weight:500;}
+.settings-card .d{font-size:11.5px; color:var(--muted); margin-top:2px;}
+.switch{width:38px; height:21px; border-radius:999px; background:var(--panel-3); border:1px solid var(--line); position:relative; cursor:pointer;}
+.switch::after{content:''; position:absolute; width:15px; height:15px; border-radius:50%; background:var(--muted); top:2px; left:2px; transition:all .15s;}
+.switch.on{background:rgba(43,182,115,.25); border-color:var(--ok);}
+.switch.on::after{left:19px; background:var(--ok);}
+
+/* LAUG gauge */
+.laug-badge{display:inline-flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:12px; padding:4px 10px; border-radius:20px;}
+.laug-badge.good{background:rgba(43,182,115,.13); color:var(--ok);}
+.laug-badge.watch{background:rgba(214,165,42,.15); color:var(--warn);}
+.laug-badge.bad{background:rgba(230,67,95,.13); color:var(--alert);}
+
+/* Notification Panel */
+.notif-panel{position:fixed; top:58px; right:14px; width:360px; max-height:520px; background:var(--panel); border:1px solid var(--line);
+  border-radius:12px; box-shadow:0 16px 48px rgba(0,0,0,.4); z-index:9999; display:none; flex-direction:column; overflow:hidden; animation:notif-in .18s ease;}
+@keyframes notif-in{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:translateY(0);}}
+.notif-panel.open{display:flex;}
+.notif-head{display:flex; align-items:center; justify-content:space-between; padding:14px 16px 12px; border-bottom:1px solid var(--line); flex-shrink:0;}
+.notif-head h4{font-size:13.5px; font-weight:600;}
+.notif-head-right{display:flex; align-items:center; gap:10px;}
+.notif-clear{font-size:11px; color:var(--muted); cursor:pointer; font-family:var(--font-mono); padding:3px 8px; border-radius:5px;}
+.notif-clear:hover{background:var(--panel-3); color:var(--text);}
+.notif-close{color:var(--muted); cursor:pointer; font-size:14px; padding:2px 6px; border-radius:5px;}
+.notif-close:hover{background:var(--panel-3); color:var(--text);}
+.notif-badge{font-size:10px; font-family:var(--font-mono); background:var(--alert); color:#fff; padding:1px 6px; border-radius:10px;}
+.notif-tabs{display:flex; gap:0; padding:8px 12px 0; flex-shrink:0;}
+.notif-tab{font-size:11.5px; font-family:var(--font-mono); padding:6px 13px; border-radius:6px 6px 0 0; cursor:pointer; color:var(--muted); border-bottom:2px solid transparent;}
+.notif-tab.active{color:var(--text); border-bottom-color:var(--lng);}
+.notif-list{overflow-y:auto; flex:1; padding:4px 0;}
+.notif-item{display:flex; align-items:flex-start; gap:10px; padding:11px 16px; border-bottom:1px solid var(--line); cursor:pointer; transition:background .1s;}
+.notif-item:hover{background:var(--panel-3);}
+.notif-item:last-child{border-bottom:none;}
+.notif-dot{width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:4px;}
+.notif-body{flex:1; min-width:0;}
+.notif-body b{font-size:12.5px; display:block;}
+.notif-body .nm{font-size:11px; color:var(--muted); font-family:var(--font-mono); margin-top:2px;}
+.notif-body .nt{font-size:10.5px; color:var(--muted); font-family:var(--font-mono); margin-top:3px;}
+.notif-empty{padding:32px 16px; text-align:center; color:var(--muted); font-size:12px;}
+.notif-overlay{position:fixed; inset:0; z-index:9998; display:none;}
+.notif-overlay.open{display:block;}
+
+@media (max-width:1100px){
+  .kpis{grid-template-columns:repeat(2,1fr);}
+  .grid2,.grid3,.statrow{grid-template-columns:1fr;}
+  .hamburger{display:flex;}
+  .sidebar{transform:translateX(-100%); transition:transform .25s ease; box-shadow:none;}
+  .sidebar.mobile-open{transform:translateX(0); box-shadow:18px 0 40px rgba(0,0,0,.35);}
+  .sidebar.collapsed{width:var(--sidebar-w); padding:18px 14px;}
+  .sidebar.collapsed .brand-text{display:block;}
+  .sidebar.collapsed .navitem span:not(.badge-count){display:inline;}
+  .sidebar.collapsed .navitem{justify-content:flex-start;}
+  .sidebar.collapsed .glabel{display:block;}
+  .collapse-btn{display:none;}
+  .main{margin-left:0 !important;}
+  .searchbox{display:none;}
+  .drawer{width:88%;}
+  #assetMap{height:440px;}
+}
+@media (max-width:760px){
+  .content{padding:16px 14px 32px;}
+  .topbar{padding:11px 14px;}
+  .page-head h2{font-size:17px;}
+  .kpis{grid-template-columns:repeat(2,1fr); gap:9px;}
+  .kpi{padding:12px 13px;}
+  .kpi .value{font-size:18px;}
+  .theme-toggle .tt-label{display:none;}
+  .theme-toggle button{padding:7px 9px;}
+  .panel{padding:13px;}
+  .statrow{grid-template-columns:repeat(2,1fr);}
+  table{display:block; overflow-x:auto; white-space:nowrap; -webkit-overflow-scrolling:touch;}
+  thead, tbody, tr{display:table; width:100%; table-layout:auto;}
+  #assetMap{height:360px;}
+  .toolbar{gap:8px;}
+  .toolbar select, .toolbar input{flex:1; min-width:120px;}
+  .meter-cards{grid-template-columns:repeat(auto-fill, minmax(150px,1fr));}
+  .report-cards{grid-template-columns:1fr;}
+  .drawer{width:100%; padding:18px;}
+  .crumb b{display:none;}
+  .ga-cards{grid-template-columns:1fr;}
+}
+@media (max-width:480px){
+  .kpis{grid-template-columns:1fr 1fr;}
+  .kpi .value{font-size:16px;}
+  .page-head{flex-direction:column; align-items:flex-start;}
+  .iconbtn{width:32px; height:32px;}
+  .d-stats{grid-template-columns:1fr 1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- Notification Panel -->
+<div class="notif-overlay" id="notifOverlay"></div>
+<div class="notif-panel" id="notifPanel">
+  <div class="notif-head">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <h4>Notifications</h4>
+      <span class="notif-badge" id="notifBadge">0</span>
+    </div>
+    <div class="notif-head-right">
+      <span class="notif-clear" id="notifClear">Mark all read</span>
+      <span class="notif-close" id="notifClose">✕</span>
+    </div>
+  </div>
+  <div class="notif-tabs" id="notifTabs">
+    <div class="notif-tab active" data-filter="all">All</div>
+    <div class="notif-tab" data-filter="alert">Critical</div>
+    <div class="notif-tab" data-filter="warn">Warnings</div>
+    <div class="notif-tab" data-filter="ok">Resolved</div>
+  </div>
+  <div class="notif-list" id="notifList"></div>
+</div>
+
+<div class="sidebar" id="sidebar">
+  <div class="collapse-btn" id="collapseBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg></div>
+  <div class="brand">
+    <div class="mark">AG</div>
+    <div class="brand-text"><h1>Altrex Grid</h1><p>CGD Asset Console</p></div>
+  </div>
+
+  <div class="navgroup">
+    <div class="glabel">Monitor</div>
+    <div class="navitem active" data-view="overview" data-label="Overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span>Overview</span></div>
+    <div class="navitem" data-view="map" data-label="Live Map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 4 3 6.5v14L9 18l6 2.5 6-2.5v-14L15 6.5 9 4Z"/><path d="M9 4v14M15 6.5v14"/></svg><span>Live Map</span></div>
+    <div class="navitem" data-view="ga" data-label="GA Dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg><span>GA Dashboard</span></div>
+  </div>
+
+  <div class="navgroup">
+    <div class="glabel">Network Assets</div>
+    <div class="navitem" data-view="cgs" data-label="City Gate Stations"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="8" width="16" height="12" rx="1.5"/><path d="M8 8V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3"/><path d="M9 13h6M9 16h6"/></svg><span>City Gate (CGS)</span></div>
+    <div class="navitem" data-view="drs" data-label="District Regulating"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 3"/></svg><span>District Reg. (DRS)</span></div>
+    <div class="navitem" data-view="mothers" data-label="Mother CNG Stations"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 21V10l8-6 8 6v11"/><path d="M9 21v-6h6v6"/></svg><span>Mother CNG</span></div>
+    <div class="navitem" data-view="daughters" data-label="Daughter Stations"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21V9l9-6 9 6v12"/><path d="M9 21v-6h6v6"/></svg><span>Daughter Stations</span><span class="badge-count" id="navDryoutCount">0</span></div>
+    <div class="navitem" data-view="lng" data-label="LNG Stations"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11Z"/></svg><span>LNG Stations</span></div>
+  </div>
+
+  <div class="navgroup">
+    <div class="glabel">Distribution</div>
+    <div class="navitem" data-view="pipeline" data-label="Pipeline Network"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12h5l3-7 4 14 3-7h5"/></svg><span>Pipeline Network</span><span class="badge-count" id="navPipeAlertCount">0</span></div>
+    <div class="navitem" data-view="png" data-label="PNG Distribution"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-6 9 6v11a1 1 0 0 1-1 1h-4v-7H9v7H4a1 1 0 0 1-1-1V9Z"/></svg><span>PNG Distribution</span></div>
+  </div>
+
+  <div class="navgroup">
+    <div class="glabel">Operations</div>
+    <div class="navitem" data-view="analytics" data-label="Analytics & LAUG"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V9M11 19V4M18 19v-7"/></svg><span>Analytics &amp; LAUG</span></div>
+    <div class="navitem" data-view="alarms" data-label="Alarms"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10.3 3.9 2.6 17.5a1.5 1.5 0 0 0 1.3 2.2h16.2a1.5 1.5 0 0 0 1.3-2.2L13.7 3.9a1.5 1.5 0 0 0-2.6 0Z"/><path d="M12 9.5v4M12 16.5h.01"/></svg><span>Alarms</span><span class="badge-count" id="navAlarmCount">0</span></div>
+    <div class="navitem" data-view="reports" data-label="Reports"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3h8l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg><span>Reports</span></div>
+  </div>
+
+  <div class="navgroup">
+    <div class="glabel">System</div>
+    <div class="navitem" data-view="settings" data-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a7.97 7.97 0 0 0 0-2l2.1-1.6-2-3.4-2.5 1a8 8 0 0 0-1.7-1L15 3h-4l-.3 2.6a8 8 0 0 0-1.7 1l-2.5-1-2 3.4L6.6 11a8 8 0 0 0 0 2l-2.1 1.6 2 3.4 2.5-1c.5.4 1.1.8 1.7 1L11 21h4l.3-2.6c.6-.2 1.2-.6 1.7-1l2.5 1 2-3.4Z"/></svg><span>Settings</span></div>
+  </div>
+
+  <div class="sidebar-foot">
+    <div class="user-row"><div class="avatar">G</div><div><div class="uname">Guest User</div><div class="urole">Demo session</div></div></div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="topbar">
+    <div style="display:flex; align-items:center; gap:12px; min-width:0;">
+      <div class="iconbtn hamburger" id="hamburgerBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg></div>
+      <div class="crumb">Altrex Grid / <b id="crumbView">Overview</b></div>
+    </div>
+    <div class="topbar-right">
+      <div class="searchbox">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" id="globalSearch" placeholder="Search station, GA, asset...">
+      </div>
+      <div class="theme-toggle" id="themeToggle">
+        <button class="active" data-theme="dark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg><span class="tt-label">Dark</span></button>
+        <button data-theme="light"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2M12 19.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2.5 12h2M19.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg><span class="tt-label">Light</span></button>
+      </div>
+      <div class="iconbtn" id="bellBtn" style="position:relative"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><span class="ping" id="bellPing"></span></div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- OVERVIEW -->
+    <div class="view active" id="view-overview">
+      <div class="page-head">
+        <div><h2><span class="live-dot"></span>CGD Network Overview</h2><p>8 Geographical Areas · City Gate → District Regulating → Mother/LNG → Daughter → PNG consumer network</p></div>
+        <div class="live-tag" id="clock1">--:--:--</div>
+      </div>
+      <div class="kpis" id="kpiRow"></div>
+
+      <div class="grid2" style="margin-bottom:14px;">
+        <div class="panel"><h3>Gas In vs Out by GA <span class="tag">SCMH</span></h3><canvas id="chartGaIo" style="max-height:220px;"></canvas></div>
+        <div class="panel"><h3>Asset Status Distribution</h3><canvas id="chartAssetStatus" style="max-height:220px;"></canvas></div>
+      </div>
+
+      <div class="grid2" style="margin-bottom:14px;">
+        <div class="panel">
+          <h3>Highest LAUG Risk (GA) <span class="tag" style="color:var(--alert)">Loss/Unaccounted Gas</span></h3>
+          <table><thead><tr><th>#</th><th>GA</th><th>Gas In</th><th>Gas Out</th><th>LAUG%</th></tr></thead><tbody id="laugTable"></tbody></table>
+        </div>
+        <div class="panel"><h3>Pipeline Pressure Health</h3><div id="pipelineHealthBars"></div></div>
+      </div>
+
+      <div class="grid2">
+        <div class="panel"><h3>Asset Counts <span class="tag">network</span></h3><div id="assetCountBars"></div></div>
+        <div class="panel"><h3>Live event feed <span class="tag">streaming</span></h3><div class="feed" id="feedOverview"></div></div>
+      </div>
+    </div>
+
+    <!-- LIVE MAP -->
+    <div class="view" id="view-map">
+      <div class="page-head">
+        <div><h2><span class="live-dot"></span>Live Asset Map</h2><p>All station types, pipeline segments with pressure monitoring, and live alerts — India</p></div>
+        <div class="live-tag" id="clock2">--:--:--</div>
+      </div>
+      <div class="panel">
+        <h3>Network map <span class="tag" id="mapStatsTag">0 assets</span></h3>
+        <div id="assetMap"></div>
+        <div class="map-legend">
+          <span><i class="sq" style="background:var(--cgs)"></i>City Gate (CGS)</span>
+          <span><i class="sq" style="background:var(--drs)"></i>District Reg. (DRS)</span>
+          <span><i style="background:var(--mother)"></i>Mother CNG</span>
+          <span><i style="background:var(--daughter)"></i>Daughter Station</span>
+          <span><i class="sq" style="background:var(--lng)"></i>LNG Station</span>
+          <span><i style="background:var(--alert)"></i>Active alert</span>
+          <span style="color:var(--muted)">Lines = pipeline segments, colored by pressure status</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- GA DASHBOARD -->
+    <div class="view" id="view-ga">
+      <div class="page-head">
+        <div><h2>Geographical Area Dashboard</h2><p>Total gas in/out and LAUG (Loss &amp; Unaccounted for Gas) by GA</p></div>
+        <div class="live-tag" id="clock3">--:--:--</div>
+      </div>
+      <div class="ga-cards" id="gaCardsWrap"></div>
+    </div>
+
+    <!-- CGS -->
+    <div class="view" id="view-cgs">
+      <div class="page-head"><div><h2>City Gate Stations (CGS)</h2><p>Transmission offtake &amp; primary pressure reduction</p></div><div class="live-tag" id="cgsCountTag">0 stations</div></div>
+      <div class="toolbar"><select id="cgsGaFilter"><option value="all">All GAs</option></select><input type="text" id="cgsSearch" placeholder="Search CGS…"></div>
+      <div id="cgsListWrap"></div>
+    </div>
+
+    <!-- DRS -->
+    <div class="view" id="view-drs">
+      <div class="page-head"><div><h2>District Regulating Stations (DRS)</h2><p>Secondary regulation feeding the PNG city network via MRS</p></div><div class="live-tag" id="drsCountTag">0 stations</div></div>
+      <div class="toolbar"><select id="drsGaFilter"><option value="all">All GAs</option></select><input type="text" id="drsSearch" placeholder="Search DRS…"></div>
+      <div id="drsListWrap"></div>
+    </div>
+
+    <!-- MOTHER -->
+    <div class="view" id="view-mothers">
+      <div class="page-head"><div><h2>Mother CNG Stations</h2><p>Compression (25-30 bar → 150-210 bar) and cascade dispatch to daughter stations</p></div><div class="live-tag" id="motherCountTag">0 stations</div></div>
+      <div class="toolbar"><select id="motherGaFilter"><option value="all">All GAs</option></select><input type="text" id="motherSearch" placeholder="Search mother station…"></div>
+      <div id="motherListWrap"></div>
+    </div>
+
+    <!-- DAUGHTERS -->
+    <div class="view" id="view-daughters">
+      <div class="page-head"><div><h2>Daughter Stations</h2><p>Cascade-fed retail dispensing — CNG (mother-sourced) and LNG-sourced</p></div><div class="live-tag" id="dsCountTag">0 stations</div></div>
+      <div class="toolbar">
+        <div class="seg" id="dsViewModeSeg"><button class="active" data-mode="grid">Grid</button><button data-mode="list">List</button></div>
+        <select id="dsGaFilter"><option value="all">All GAs</option></select>
+        <select id="dsSourceFilter"><option value="all">All sources</option><option value="mother">Mother CNG</option><option value="lng">LNG</option></select>
+        <select id="dsStatusFilter"><option value="all">All statuses</option><option value="ok">Healthy</option><option value="warn">Low</option><option value="alert">Critical</option></select>
+        <input type="text" id="dsSearch" placeholder="Search station…">
+      </div>
+      <div id="dsListWrap"></div>
+    </div>
+
+    <!-- LNG -->
+    <div class="view" id="view-lng">
+      <div class="page-head"><div><h2>LNG Stations</h2><p>Cryogenic storage, regasification, and cascade dispatch</p></div><div class="live-tag" id="lngCountTag">0 stations</div></div>
+      <div id="lngListWrap"></div>
+    </div>
+
+    <!-- PIPELINE NETWORK -->
+    <div class="view" id="view-pipeline">
+      <div class="page-head"><div><h2><span class="live-dot"></span>Pipeline Network</h2><p>All monitored segments — pressure readings and alert status</p></div><div class="live-tag" id="clock4">--:--:--</div></div>
+      <div class="statrow" id="pipeStatRow"></div>
+      <div class="panel">
+        <h3>Segment registry <span class="tag" id="pipeCountTag">0 segments</span></h3>
+        <table><thead><tr><th>Segment ID</th><th>From</th><th>To</th><th>Type</th><th>Pressure</th><th>Design Range</th><th>Status</th></tr></thead><tbody id="pipeTable"></tbody></table>
+      </div>
+    </div>
+
+    <!-- PNG DISTRIBUTION -->
+    <div class="view" id="view-png">
+      <div class="page-head"><div><h2>PNG Distribution Network</h2><p>Piped Natural Gas to Commercial / Industrial / Domestic / Residential via MRS (1–3 bar)</p></div></div>
+      <div class="kpis" style="grid-template-columns:repeat(4,1fr);" id="pngKpis"></div>
+      <div class="grid2">
+        <div class="panel"><h3>Consumption by Segment <span class="tag">SCMH</span></h3><canvas id="chartPngSegment" style="max-height:220px;"></canvas></div>
+        <div class="panel"><h3>MRS Distribution by GA</h3><div id="pngGaBars"></div></div>
+      </div>
+    </div>
+
+    <!-- ANALYTICS & LAUG -->
+    <div class="view" id="view-analytics">
+      <div class="page-head"><div><h2>Analytics &amp; LAUG Report</h2><p>Loss &amp; Unaccounted for Gas — network-wide consumption analytics</p></div></div>
+      <div class="kpis" style="grid-template-columns:repeat(4,1fr);" id="laugKpis"></div>
+      <div class="grid2" style="margin-bottom:14px;">
+        <div class="panel"><h3>LAUG % by GA <span class="tag">target &lt;2%</span></h3><canvas id="chartLaug" style="max-height:220px;"></canvas></div>
+        <div class="panel"><h3>Gas Balance — Network Total</h3><canvas id="chartBalance" style="max-height:220px;"></canvas></div>
+      </div>
+      <div class="panel">
+        <h3>LAUG methodology</h3>
+        <p style="font-size:12px; color:var(--text-dim); line-height:1.7;">
+          <b>LAUG (Loss &amp; Unaccounted for Gas)</b> = (Gas Input at CGS − Metered Gas Output at Mother/LNG/PNG) ÷ Gas Input × 100.
+          It captures leakage, metering error, theft, and billing variance across the network. Values in the 5–7% range are typical for a well-run CGD network;
+          sustained values above 8.5% trigger an investigation workflow in this demo's Alarms feed.
+        </p>
+      </div>
+    </div>
+
+    <!-- ALARMS -->
+    <div class="view" id="view-alarms">
+      <div class="page-head">
+        <div><h2><span class="live-dot"></span>Alarms</h2><p>Pipeline pressure excursions, dryout, equipment faults, and LAUG threshold breaches</p></div>
+        <button class="btn" id="exportAlarmsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg>Export CSV</button>
+      </div>
+      <div class="kpis" style="grid-template-columns:repeat(4,1fr);" id="alarmKpis"></div>
+      <div class="sev-filter" id="sevFilter">
+        <div class="sev-chip active" data-sev="all">All</div>
+        <div class="sev-chip" data-sev="alert">Critical</div>
+        <div class="sev-chip" data-sev="warn">Warning</div>
+        <div class="sev-chip" data-sev="ok">Resolved</div>
+      </div>
+      <div class="panel">
+        <h3>Alarm log <span class="tag" id="alarmCountTag">0 events</span></h3>
+        <table><thead><tr><th>Time</th><th>Severity</th><th>Asset</th><th>GA</th><th>Description</th><th></th></tr></thead><tbody id="alarmTable"></tbody></table>
+      </div>
+    </div>
+
+    <!-- REPORTS -->
+    <div class="view" id="view-reports">
+      <div class="page-head"><div><h2>Reports</h2><p>Generate demo PDF reports from the current live network snapshot</p></div></div>
+      <div class="report-cards">
+        <div class="report-card">
+          <div class="ricon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V9M11 19V4M18 19v-7"/></svg></div>
+          <h4>Daily Gas Balance Report</h4>
+          <p>GA-wise gas input, output, and LAUG% for the current snapshot.</p>
+          <button class="btn primary" onclick="generateReport('balance')">Download PDF</button>
+        </div>
+        <div class="report-card">
+          <div class="ricon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12h5l3-7 4 14 3-7h5"/></svg></div>
+          <h4>Pipeline Pressure Report</h4>
+          <p>All monitored segments with live pressure and alert status.</p>
+          <button class="btn primary" onclick="generateReport('pipeline')">Download PDF</button>
+        </div>
+        <div class="report-card">
+          <div class="ricon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 4v17"/></svg></div>
+          <h4>Asset Health &amp; Equipment Audit</h4>
+          <p>Full registry — CGS, DRS, Mother, Daughter, and LNG station equipment status.</p>
+          <button class="btn primary" onclick="generateReport('assets')">Download PDF</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="view" id="view-settings">
+      <div class="page-head"><div><h2>Settings</h2><p>Console preferences — demo placeholders, not persisted</p></div></div>
+      <div class="panel" style="max-width:640px;">
+        <h3>Appearance</h3>
+        <div class="settings-card"><div><div class="t">Dark mode</div><div class="d">Use the theme toggle in the top bar</div></div><div class="switch on" id="settingsThemeSwitch"></div></div>
+        <h3 style="margin-top:18px;">Alerting</h3>
+        <div class="settings-card"><div><div class="t">Pipeline pressure alerts</div><div class="d">Notify on segments outside design pressure range</div></div><div class="switch on"></div></div>
+        <div class="settings-card"><div><div class="t">LAUG threshold alerts</div><div class="d">Flag GAs with LAUG% above 8.5%</div></div><div class="switch on"></div></div>
+        <h3 style="margin-top:18px;">Data</h3>
+        <div class="settings-card"><div><div class="t">Polling interval</div><div class="d">Simulated tick rate</div></div><span style="font-family:var(--font-mono); font-size:11.5px; color:var(--muted);">4s</span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Detail Drawer -->
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<div class="drawer" id="meterDrawer">
+  <div class="drawer-head">
+    <div><div class="did" id="dDrawerId">—</div><div class="dsub" id="dDrawerSub">—</div></div>
+    <div class="drawer-close" id="drawerCloseBtn">✕</div>
+  </div>
+  <div id="drawerBody"></div>
+</div>
+
+<script>
+/* =================================================================
+   ALTREX GRID — CGD ASSET MANAGEMENT DEMO CONSOLE
+   GA -> CGS -> DRS / Mother CNG -> Daughter, plus LNG branch,
+   plus PNG/MRS consumer network, plus pipeline pressure monitoring.
+   All data simulated client-side. No backend, no persistence.
+   ================================================================= */
+
+const CITIES = [
+  {name:"Delhi", lat:28.7041, lng:77.1025}, {name:"Mumbai", lat:19.0760, lng:72.8777},
+  {name:"Pune", lat:18.5204, lng:73.8567}, {name:"Ahmedabad", lat:23.0225, lng:72.5714},
+  {name:"Hyderabad", lat:17.3850, lng:78.4867}, {name:"Kolkata", lat:22.5726, lng:88.3639},
+  {name:"Bengaluru", lat:12.9716, lng:77.5946}, {name:"Chennai", lat:13.0827, lng:80.2707},
+];
+function rand(min,max){return Math.random()*(max-min)+min;}
+function randInt(min,max){return Math.floor(rand(min,max+1));}
+function randChoice(arr){return arr[Math.floor(Math.random()*arr.length)];}
+function cssVar(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+function minutesAgo(date){
+  const mins = Math.max(0, Math.round((Date.now()-date.getTime())/60000));
+  if(mins < 1) return 'just now';
+  if(mins < 60) return mins+'m ago';
+  return Math.round(mins/60)+'h ago';
+}
+function jitter(lat,lng,amt){ return {lat:lat+rand(-amt,amt), lng:lng+rand(-amt,amt)}; }
+
+/* ============================================================
+   ASSET HIERARCHY GENERATION
+   ============================================================ */
+let GAs = CITIES.map((c,i)=>({
+  id:`GA-${String(i+1).padStart(2,'0')}`, name:`${c.name} GA`, city:c.name, lat:c.lat, lng:c.lng,
+}));
+
+let cgsList=[], drsList=[], motherList=[], daughterList=[], lngList=[], pipelineList=[];
+let idc = { cgs:1, drs:1, mother:1, daughter:1, lng:1, pipe:1 };
+
+GAs.forEach(ga=>{
+  const nCgs = randInt(1,2);
+  for(let i=0;i<nCgs;i++){
+    const pos = jitter(ga.lat, ga.lng, 0.12);
+    const cgs = {
+      id:`CGS-${String(idc.cgs++).padStart(3,'0')}`, name:`${ga.city} CGS-${i+1}`, gaId:ga.id, city:ga.city,
+      lat:pos.lat, lng:pos.lng,
+      inletPressure: rand(49,66), outletPressure: rand(25,30),
+      flowRate: rand(2500,6000), status:'ok',
+      equipment:[
+        {name:'Filtration Unit', runStatus:'normal', commStatus:'online', metrics:[{kind:'dp', value:rand(0.05,0.25)}]},
+        {name:'Preheater', runStatus:'normal', commStatus:'online', metrics:[{kind:'temp', value:rand(38,52)}]},
+        {name:'Pressure Regulator (PRS)', runStatus:'normal', commStatus:'online', metrics:[{kind:'pressure', value:rand(25,30)}]},
+        {name:'Metering Skid', runStatus:'normal', commStatus:'online', metrics:[{kind:'flow', value:rand(2500,6000)}]},
+        {name:'Odorization Unit', runStatus:'normal', commStatus:'online', metrics:[{kind:'dosing', value:rand(8,18)}]},
+      ],
+    };
+    cgsList.push(cgs);
+
+    // DRS under this CGS
+    const nDrs = randInt(2,3);
+    for(let d=0; d<nDrs; d++){
+      const dpos = jitter(cgs.lat, cgs.lng, 0.06);
+      drsList.push({
+        id:`DRS-${String(idc.drs++).padStart(3,'0')}`, name:`${ga.city} DRS-${drsList.length+1}`, gaId:ga.id, cgsId:cgs.id, city:ga.city,
+        lat:dpos.lat, lng:dpos.lng,
+        inletPressure: cgs.outletPressure, outletPressure: rand(4,7),
+        mrsCount: randInt(3,8), status:'ok',
+        segmentMix:{ commercial: rand(8,25), industrial: rand(15,40), domestic: rand(20,45), residential: rand(10,30) },
+        equipment:[
+          {name:'Regulator Train', runStatus:'normal', commStatus:'online', metrics:[{kind:'pressure', value:rand(4,7)}]},
+          {name:'Filter Separator', runStatus:'normal', commStatus:'online', metrics:[{kind:'dp', value:rand(0.05,0.2)}]},
+          {name:'Metering & Telemetry', runStatus:'normal', commStatus:'online', metrics:[{kind:'flow', value:rand(200,900)}]},
+        ],
+      });
+    }
+    // pipeline CGS -> each DRS
+    drsList.filter(d=>d.cgsId===cgs.id).forEach(drs=>{
+      pipelineList.push({
+        id:`PL-${String(idc.pipe++).padStart(3,'0')}`, type:'CGS-DRS', gaId:ga.id,
+        fromId:cgs.id, fromName:cgs.name, fromLat:cgs.lat, fromLng:cgs.lng,
+        toId:drs.id, toName:drs.name, toLat:drs.lat, toLng:drs.lng,
+        pressure: cgs.outletPressure - rand(0.3,1.2), designMin:22, designMax:32, status:'ok',
+      });
+    });
+
+    // Mother CNG stations under this CGS
+    const nMother = randInt(2,3);
+    for(let m=0;m<nMother;m++){
+      const mpos = jitter(cgs.lat, cgs.lng, 0.09);
+      const compressorCount = randInt(2,4);
+      const mother = {
+        id:`MCS-${String(idc.mother++).padStart(3,'0')}`, name:`${ga.city} Mother CNG-${motherList.length+1}`, gaId:ga.id, cgsId:cgs.id, city:ga.city,
+        lat:mpos.lat, lng:mpos.lng,
+        inletPressure: cgs.outletPressure, outletPressure: rand(150,210),
+        gasInToday: rand(8000,16000), gasOutToday: 0,
+        compressors: Array.from({length:compressorCount},(_,ci)=>({
+          name:`Compressor ${ci+1}`, runStatus:'running', commStatus:'online',
+          metrics:[
+            {kind:'pressure_in', value:rand(24,30)},
+            {kind:'pressure_out', value:rand(150,210)},
+            {kind:'spc', value:rand(0.35,0.55)},
+            {kind:'util', value:rand(55,95)},
+          ]
+        })),
+        bays: Array(6).fill(null), status:'ok', dailyVehicles: randInt(150,600),
+      };
+      mother.gasOutToday = mother.gasInToday * rand(0.94,0.99);
+      {
+        const nDisp = randInt(2,6);
+        mother.dispensers = Array.from({length:nDisp},(_,di)=>({
+          name:`Dispenser ${di+1}`, sideA:rand(60,180), sideB:rand(60,180), status:'active', commStatus:'online'
+        }));
+        const todayTotal = mother.dispensers.reduce((s,dd)=>s+dd.sideA+dd.sideB,0);
+        mother.salesHistory7d = Array.from({length:6},()=>todayTotal*rand(0.8,1.15));
+        mother.salesHistory7d.push(todayTotal);
+      }
+      // seed bay states
+      for(let b=0;b<6;b++){
+        if(Math.random()<0.55){
+          const p = Math.random()<0.4 ? 100 : rand(15,90);
+          mother.bays[b] = { pressure:p, status:p>=100?'full':'filling' };
+        }
+      }
+      motherList.push(mother);
+
+      // pipeline CGS -> Mother
+      pipelineList.push({
+        id:`PL-${String(idc.pipe++).padStart(3,'0')}`, type:'CGS-Mother', gaId:ga.id,
+        fromId:cgs.id, fromName:cgs.name, fromLat:cgs.lat, fromLng:cgs.lng,
+        toId:mother.id, toName:mother.name, toLat:mother.lat, toLng:mother.lng,
+        pressure: cgs.outletPressure - rand(0.3,1.2), designMin:22, designMax:32, status:'ok',
+      });
+
+      // Daughter stations fed by this mother (cascade truck, not pipeline)
+      const nDaughter = randInt(4,8);
+      for(let dd=0; dd<nDaughter; dd++){
+        const dpos = jitter(mother.lat, mother.lng, 0.14);
+        daughterList.push({
+          id:`DCS-${String(idc.daughter++).padStart(3,'0')}`, name:`${ga.city} Daughter-${daughterList.length+1}`, gaId:ga.id, city:ga.city,
+          lat:dpos.lat, lng:dpos.lng,
+          sourceType:'mother', sourceId:mother.id,
+          cascadePressure: rand(35,100),
+          booster:{ name:'Booster Compressor', runStatus:'running', commStatus:'online', metrics:[
+            {kind:'pressure_in', value:rand(50,140)},
+            {kind:'pressure_out', value:rand(150,210)},
+            {kind:'util', value:rand(40,90)},
+          ]},
+          dailyVehicles: randInt(60,320), status:'ok',
+        });
+        {
+          const _ds = daughterList[daughterList.length-1];
+          const nDisp = randInt(2,6);
+          _ds.dispensers = Array.from({length:nDisp},(_,di)=>({
+            name:`Dispenser ${di+1}`, sideA:rand(20,90), sideB:rand(20,90), status:'active', commStatus:'online'
+          }));
+          const todayTotal = _ds.dispensers.reduce((s,dd)=>s+dd.sideA+dd.sideB,0);
+          _ds.salesHistory7d = Array.from({length:6},()=>todayTotal*rand(0.8,1.15));
+          _ds.salesHistory7d.push(todayTotal);
+        }
+      }
+    }
+  }
+});
+
+/* ---------- LNG STATIONS ---------- */
+const LNG_GA_PICKS = [0,2,4,6]; // GA indices to host an LNG station
+LNG_GA_PICKS.forEach((gaIdx,i)=>{
+  const ga = GAs[gaIdx];
+  const pos = jitter(ga.lat, ga.lng, 0.15);
+  const lng = {
+    id:`LNG-${String(idc.lng++).padStart(2,'0')}`, name:`${ga.city} LNG Terminal`, gaId:ga.id, city:ga.city,
+    lat:pos.lat, lng:pos.lng,
+    tankLevel: rand(45,95), tankCapacityKL: randChoice([500,1000,1500]),
+    vaporizer:{ name:'Vaporizer (Liquid → Gas)', runStatus:'running', commStatus:'online', metrics:[
+      {kind:'regas', value:rand(300,900)},
+      {kind:'temp', value:rand(5,15)},
+    ]},
+    compressor:{ name:'Compressor', runStatus:'running', commStatus:'online', metrics:[
+      {kind:'pressure_in', value:rand(2,6)},
+      {kind:'pressure_out', value:rand(150,210)},
+      {kind:'spc', value:rand(0.4,0.6)},
+      {kind:'util', value:rand(50,90)},
+    ]},
+    outletPressure: rand(150,210), status:'ok',
+    fillingPosts: randInt(2,4), dailyDispatches: randInt(8,20),
+  };
+  lngList.push(lng);
+  const nDaughter = randInt(10,15);
+  for(let dd=0; dd<nDaughter; dd++){
+    const dpos = jitter(lng.lat, lng.lng, 0.18);
+    daughterList.push({
+      id:`DCS-${String(idc.daughter++).padStart(3,'0')}`, name:`${ga.city} LNG-Daughter-${daughterList.length+1}`, gaId:ga.id, city:ga.city,
+      lat:dpos.lat, lng:dpos.lng,
+      sourceType:'lng', sourceId:lng.id,
+      cascadePressure: rand(35,100),
+      booster:{ name:'Booster Compressor', runStatus:'running', commStatus:'online', metrics:[
+        {kind:'pressure_in', value:rand(50,140)},
+        {kind:'pressure_out', value:rand(150,210)},
+        {kind:'util', value:rand(40,90)},
+      ]},
+      dailyVehicles: randInt(60,320), status:'ok',
+    });
+    {
+      const _ds = daughterList[daughterList.length-1];
+      const nDisp = randInt(2,6);
+      _ds.dispensers = Array.from({length:nDisp},(_,di)=>({
+        name:`Dispenser ${di+1}`, sideA:rand(20,90), sideB:rand(20,90), status:'active', commStatus:'online'
+      }));
+      const todayTotal = _ds.dispensers.reduce((s,dd)=>s+dd.sideA+dd.sideB,0);
+      _ds.salesHistory7d = Array.from({length:6},()=>todayTotal*rand(0.8,1.15));
+      _ds.salesHistory7d.push(todayTotal);
+    }
+  }
+});
+
+function gaById(id){ return GAs.find(g=>g.id===id); }
+function cgsById(id){ return cgsList.find(c=>c.id===id); }
+function drsById(id){ return drsList.find(d=>d.id===id); }
+function motherById(id){ return motherList.find(m=>m.id===id); }
+function daughterById(id){ return daughterList.find(d=>d.id===id); }
+function lngById(id){ return lngList.find(l=>l.id===id); }
+
+/* Calibrate a realistic Loss & Unaccounted for Gas (LAUG) target per GA — 5% to 10%,
+   a healthy-but-non-zero range for a mature CGD network. Gas Out is derived from this
+   target rather than an independent bottom-up sum, so the two numbers always agree. */
+GAs.forEach(ga=>{ ga.laugTarget = rand(5,10); });
+
+const CRITICAL_THRESHOLD = 25, LOW_THRESHOLD = 55;
+function dsStatusKey(ds){ if(ds.cascadePressure<CRITICAL_THRESHOLD) return 'alert'; if(ds.cascadePressure<LOW_THRESHOLD) return 'warn'; return 'ok'; }
+function dsStatusLabel(ds){ return {alert:'CRITICAL',warn:'LOW',ok:'HEALTHY'}[dsStatusKey(ds)]; }
+function dsColor(ds){ const k=dsStatusKey(ds); return k==='ok'?cssVar('--ok'):k==='warn'?cssVar('--warn'):cssVar('--alert'); }
+
+/* ============================================================
+   THEME / SIDEBAR / NAV (shared scaffolding)
+   ============================================================ */
+const themeToggle = document.getElementById('themeToggle');
+themeToggle.addEventListener('click', (e)=>{
+  const btn = e.target.closest('button'); if(!btn) return;
+  const theme = btn.dataset.theme;
+  document.documentElement.setAttribute('data-theme', theme);
+  themeToggle.querySelectorAll('button').forEach(b=>b.classList.toggle('active', b===btn));
+  document.getElementById('settingsThemeSwitch').classList.toggle('on', theme==='dark');
+  setMapTheme();
+  requestAnimationFrame(()=>{ if(assetMap) assetMap.invalidateSize(); });
+});
+document.getElementById('settingsThemeSwitch').addEventListener('click', function(){
+  const isOn = this.classList.toggle('on');
+  const theme = isOn ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', theme);
+  themeToggle.querySelectorAll('button').forEach(b=>b.classList.toggle('active', b.dataset.theme===theme));
+  setMapTheme();
+});
+document.querySelectorAll('.switch:not(#settingsThemeSwitch)').forEach(sw=>sw.addEventListener('click',()=>sw.classList.toggle('on')));
+
+const sidebar = document.getElementById('sidebar');
+document.getElementById('collapseBtn').addEventListener('click', ()=>{ sidebar.classList.toggle('collapsed'); document.body.classList.toggle('sidebar-collapsed'); });
+
+const sidebarOverlayEl = document.createElement('div');
+sidebarOverlayEl.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:39;display:none;';
+document.body.insertBefore(sidebarOverlayEl, document.querySelector('.main'));
+function openMobileSidebar(){ sidebar.classList.add('mobile-open'); sidebarOverlayEl.style.display='block'; }
+function closeMobileSidebar(){ sidebar.classList.remove('mobile-open'); sidebarOverlayEl.style.display='none'; }
+document.getElementById('hamburgerBtn').addEventListener('click', ()=>{
+  sidebar.classList.contains('mobile-open') ? closeMobileSidebar() : openMobileSidebar();
+});
+sidebarOverlayEl.addEventListener('click', closeMobileSidebar);
+
+const views = document.querySelectorAll('.view');
+const navItems = document.querySelectorAll('.navitem');
+const crumbView = document.getElementById('crumbView');
+navItems.forEach(item=>{
+  item.addEventListener('click', ()=>{
+    navItems.forEach(n=>n.classList.remove('active'));
+    item.classList.add('active');
+    const v = item.dataset.view;
+    views.forEach(view=>view.classList.toggle('active', view.id==='view-'+v));
+    crumbView.textContent = item.dataset.label;
+    closeMobileSidebar();
+    if(v==='map'){
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        initMapIfNeeded(); if(assetMap) assetMap.invalidateSize(); renderMap();
+      }));
+    }
+    if(v==='ga') renderGaCards();
+    if(v==='cgs') renderCgsList();
+    if(v==='drs') renderDrsList();
+    if(v==='mothers') renderMotherList();
+    if(v==='daughters') renderDaughterList();
+    if(v==='lng') renderLngList();
+    if(v==='pipeline') renderPipelineView();
+    if(v==='png') renderPngView();
+    if(v==='analytics') renderAnalyticsView();
+    if(v==='alarms') renderAlarmsView();
+  });
+});
+
+/* ============================================================
+   KPI STRIP (Overview)
+   ============================================================ */
+const kpiRow = document.getElementById('kpiRow');
+const kpiDefs = [
+  {id:'gasin',  label:'Total Gas In (SCMH)',  color:'var(--cgs)'},
+  {id:'gasout', label:'Total Gas Out (SCMH)', color:'var(--mother)'},
+  {id:'laug',   label:'Network LAUG %',       color:'var(--warn)'},
+  {id:'assets', label:'Total Monitored Assets', color:'var(--lng)'},
+  {id:'alerts', label:'Active Alerts',        color:'var(--alert)'},
+];
+kpiRow.innerHTML = kpiDefs.map(k=>`<div class="kpi"><div class="accent" style="background:${k.color}"></div>
+  <div class="label">${k.label}</div><div class="value" id="kpi-${k.id}">--</div><div class="delta up" id="kpi-${k.id}-d">+0.0%</div></div>`).join('');
+function setKpi(id,value,delta,isGood){
+  const v=document.getElementById('kpi-'+id), d=document.getElementById('kpi-'+id+'-d');
+  if(!v) return; v.textContent=value; d.textContent=delta; d.className='delta '+(isGood?'up':'down');
+}
+function randDelta(){ return (Math.random()>0.5?'+':'-')+rand(0.2,2.4).toFixed(1)+'%'; }
+
+function totalGasIn(){ return cgsList.reduce((s,c)=>s+c.flowRate,0); }
+function totalGasOut(){ return GAs.reduce((s,ga)=>s+gaGasOut(ga),0); }
+function networkLaug(){
+  const gi = totalGasIn(), go = totalGasOut();
+  return gi>0 ? Math.max(0,(gi-go)/gi*100) : 0;
+}
+function countActiveAlerts(){
+  const dsAlerts = daughterList.filter(d=>dsStatusKey(d)==='alert').length;
+  const pipeAlerts = pipelineList.filter(p=>p.status==='alert').length;
+  const eqAlerts = [...cgsList,...drsList,...motherList,...lngList].filter(a=>a.status==='alert').length;
+  return dsAlerts+pipeAlerts+eqAlerts;
+}
+function totalAssets(){ return cgsList.length+drsList.length+motherList.length+daughterList.length+lngList.length+pipelineList.length; }
+
+function updateKPIs(){
+  const gi = totalGasIn(), go = totalGasOut(), laug = networkLaug(), alerts = countActiveAlerts();
+  setKpi('gasin', gi.toFixed(0), randDelta(), true);
+  setKpi('gasout', go.toFixed(0), randDelta(), true);
+  setKpi('laug', laug.toFixed(2)+'%', laug<7?'within target':laug<8.5?'watch':'▲ above target', laug<7);
+  setKpi('assets', totalAssets(), `${cgsList.length} CGS · ${drsList.length} DRS · ${motherList.length} Mother · ${daughterList.length} Daughter · ${lngList.length} LNG`, true);
+  setKpi('alerts', alerts, alerts>0?`${alerts} need review`:'all clear', alerts===0);
+  document.getElementById('navAlarmCount').textContent = alerts>0 ? alerts : '';
+  document.getElementById('navAlarmCount').style.display = alerts>0 ? 'inline-block':'none';
+  const dryoutCount = daughterList.filter(d=>dsStatusKey(d)==='alert').length;
+  document.getElementById('navDryoutCount').textContent = dryoutCount>0?dryoutCount:'';
+  document.getElementById('navDryoutCount').style.display = dryoutCount>0?'inline-block':'none';
+  const pipeAlertCount = pipelineList.filter(p=>p.status==='alert').length;
+  document.getElementById('navPipeAlertCount').textContent = pipeAlertCount>0?pipeAlertCount:'';
+  document.getElementById('navPipeAlertCount').style.display = pipeAlertCount>0?'inline-block':'none';
+  document.getElementById('bellPing').style.display = alerts>0?'block':'none';
+}
+
+/* ============================================================
+   EVENT / ALARM LOG
+   ============================================================ */
+let eventLog = [];
+function pushEvent(asset, severity, msg){
+  const time = new Date().toTimeString().slice(0,8);
+  const entry = {time, msg, severity, asset, acked:false};
+  eventLog.unshift(entry);
+  if(eventLog.length>220) eventLog.pop();
+  renderFeed('feedOverview', eventLog.slice(0,30));
+  const av = document.querySelector('.view.active');
+  if(av && av.id==='view-alarms') renderAlarmsView();
+  if(notifPanel && notifPanel.classList.contains('open')) renderNotifList();
+}
+function renderFeed(elId, list){
+  const el = document.getElementById(elId); if(!el) return;
+  el.innerHTML = list.map(ev=>{
+    const color = ev.severity==="alert"?"var(--alert)":ev.severity==="warn"?"var(--warn)":"var(--ok)";
+    return `<div class="ev"><div class="t">${ev.time}</div><div class="b" style="background:${color}"></div>
+      <div class="msg"><b>${ev.msg}</b><span class="meta">${ev.asset.name} · ${ev.asset.city||''}</span></div></div>`;
+  }).join('') || `<div style="padding:20px; text-align:center; color:var(--muted); font-size:12px;">No events yet — network nominal.</div>`;
+}
+
+/* ============================================================
+   CHARTS (Overview)
+   ============================================================ */
+Chart.defaults.font.family = "'IBM Plex Mono', monospace";
+Chart.defaults.font.size = 10;
+let chartGaIo=null, chartAssetStatus=null, chartPngSegment=null, chartLaug=null, chartBalance=null;
+
+function gaGasIn(ga){ return cgsList.filter(c=>c.gaId===ga.id).reduce((s,c)=>s+c.flowRate,0); }
+function gaGasOut(ga){ return gaGasIn(ga) * (1 - ga.laugTarget/100); }
+function gaLaug(ga){ return ga.laugTarget; }
+
+function initOverviewCharts(){
+  const elIo = document.getElementById('chartGaIo');
+  if(elIo){
+    const ins = GAs.map(gaGasIn), outs = GAs.map(gaGasOut);
+    if(chartGaIo){ chartGaIo.data.datasets[0].data=ins; chartGaIo.data.datasets[1].data=outs; chartGaIo.update(); }
+    else {
+      chartGaIo = new Chart(elIo, { type:'bar',
+        data:{ labels:GAs.map(g=>g.city), datasets:[
+          {label:'Gas In', data:ins, backgroundColor:cssVar('--cgs'), borderRadius:4, borderSkipped:false},
+          {label:'Gas Out', data:outs, backgroundColor:cssVar('--mother'), borderRadius:4, borderSkipped:false}
+        ]},
+        options:{ maintainAspectRatio:false, animation:{duration:600}, plugins:{legend:{display:true, labels:{color:cssVar('--muted'), boxWidth:10, font:{size:9}}}},
+          scales:{ x:{grid:{display:false},ticks:{color:cssVar('--muted'), font:{size:9}}},
+                   y:{grid:{color:cssVar('--line')},ticks:{color:cssVar('--muted'),maxTicksLimit:5}} } }
+      });
+    }
+  }
+  const elS = document.getElementById('chartAssetStatus');
+  if(elS){
+    const buckets = { Normal:0, Attention:0, Critical:0 };
+    [...cgsList,...drsList,...motherList,...daughterList,...lngList].forEach(a=>{
+      const key = a.status==='alert' ? 'Critical' : (a.status==='warn' ? 'Attention' : (dsStatusOf(a)));
+      buckets[key] = (buckets[key]||0)+1;
+    });
+    function dsStatusOf(a){
+      if(a.cascadePressure!==undefined) return dsStatusKey(a)==='alert'?'Critical':dsStatusKey(a)==='warn'?'Attention':'Normal';
+      return 'Normal';
+    }
+    if(chartAssetStatus){ chartAssetStatus.data.datasets[0].data = Object.values(buckets); chartAssetStatus.update(); }
+    else {
+      chartAssetStatus = new Chart(elS, { type:'bar',
+        data:{ labels:Object.keys(buckets), datasets:[{ data:Object.values(buckets), backgroundColor:['#2bb673','#d6a52a','#e6435f'], borderRadius:5, borderSkipped:false }] },
+        options:{ maintainAspectRatio:false, animation:{duration:600}, plugins:{legend:{display:false}},
+          scales:{ x:{grid:{display:false},ticks:{color:cssVar('--muted')}}, y:{grid:{color:cssVar('--line')},ticks:{color:cssVar('--muted'),maxTicksLimit:5}} } }
+      });
+    }
+  }
+}
+
+function renderLaugTable(){
+  const sorted = GAs.slice().map(g=>({ga:g, laug:gaLaug(g), gi:gaGasIn(g), go:gaGasOut(g)})).sort((a,b)=>b.laug-a.laug).slice(0,5);
+  document.getElementById('laugTable').innerHTML = sorted.map((r,i)=>{
+    const color = r.laug<7?'var(--ok)':r.laug<8.5?'var(--warn)':'var(--alert)';
+    return `<tr onclick="openDrawer('ga','${r.ga.id}')"><td style="font-weight:700;color:${color};font-size:13px;">#${i+1}</td>
+      <td><b style="font-size:12px">${r.ga.name}</b></td><td>${r.gi.toFixed(0)}</td><td>${r.go.toFixed(0)}</td>
+      <td class="flow" style="color:${color}">${r.laug.toFixed(2)}%</td></tr>`;
+  }).join('');
+}
+function renderPipelineHealthBars(){
+  const buckets = {Normal:0, Watch:0, Alert:0};
+  pipelineList.forEach(p=>{ buckets[p.status==='alert'?'Alert':p.status==='warn'?'Watch':'Normal']++; });
+  const total = pipelineList.length||1;
+  const el = document.getElementById('pipelineHealthBars');
+  const colors = {Normal:'var(--ok)', Watch:'var(--warn)', Alert:'var(--alert)'};
+  el.innerHTML = Object.keys(buckets).map(k=>`
+    <div class="zonebar-row"><div class="zname">${k}</div>
+      <div class="zonebar-track"><div class="zonebar-fill" style="width:${(buckets[k]/total*100).toFixed(0)}%; background:${colors[k]}"></div></div>
+      <div class="zonebar-val">${buckets[k]} segments</div></div>`).join('');
+}
+function renderAssetCountBars(){
+  const counts = [
+    ['City Gate (CGS)', cgsList.length, 'var(--cgs)'],
+    ['District Reg. (DRS)', drsList.length, 'var(--drs)'],
+    ['Mother CNG', motherList.length, 'var(--mother)'],
+    ['Daughter Stations', daughterList.length, 'var(--daughter)'],
+    ['LNG Stations', lngList.length, 'var(--lng)'],
+  ];
+  const max = Math.max(...counts.map(c=>c[1]),1);
+  document.getElementById('assetCountBars').innerHTML = counts.map(([name,val,color])=>`
+    <div class="zonebar-row"><div class="zname">${name}</div>
+      <div class="zonebar-track"><div class="zonebar-fill" style="width:${(val/max*100).toFixed(0)}%; background:${color}"></div></div>
+      <div class="zonebar-val">${val}</div></div>`).join('');
+}
+
+/* ============================================================
+   LEAFLET MAP
+   ============================================================ */
+let assetMap, clusterCgs, clusterDrs, clusterMother, clusterDaughter, clusterLng, pipeLayer, mapInited=false, assetTileLayer=null;
+function currentMapTileUrl(){
+  const theme = document.documentElement.getAttribute('data-theme');
+  return theme==='light' ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png' : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+}
+function setMapTheme(){
+  if(!mapInited) return;
+  if(assetTileLayer) assetMap.removeLayer(assetTileLayer);
+  assetTileLayer = L.tileLayer(currentMapTileUrl(), {attribution:'&copy; OpenStreetMap &copy; CARTO', subdomains:'abcd', maxZoom:19}).addTo(assetMap);
+  assetTileLayer.bringToBack();
+}
+function makeCluster(color){
+  return L.markerClusterGroup({
+    iconCreateFunction:function(cluster){
+      const count = cluster.getChildCount();
+      return L.divIcon({ html:`<div style="background:${color}; width:${Math.min(46,26+count/4)}px; height:${Math.min(46,26+count/4)}px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#04120c; font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:11px; border:2.5px solid ${cssVar('--panel')}; box-shadow:0 0 10px ${color}77;">${count}</div>`,
+        className:'', iconSize:[36,36] });
+    }
+  });
+}
+function initMapIfNeeded(){
+  if(mapInited) return;
+  assetMap = L.map('assetMap', {scrollWheelZoom:true}).setView([22.5,79.5], 5);
+  assetTileLayer = L.tileLayer(currentMapTileUrl(), {attribution:'&copy; OpenStreetMap &copy; CARTO', subdomains:'abcd', maxZoom:19}).addTo(assetMap);
+  clusterCgs = makeCluster(cssVar('--cgs')); clusterDrs = makeCluster(cssVar('--drs'));
+  clusterMother = makeCluster(cssVar('--mother')); clusterDaughter = makeCluster(cssVar('--daughter'));
+  clusterLng = makeCluster(cssVar('--lng'));
+  [clusterCgs,clusterDrs,clusterMother,clusterDaughter,clusterLng].forEach(c=>assetMap.addLayer(c));
+  pipeLayer = L.layerGroup().addTo(assetMap);
+  mapInited = true;
+  new ResizeObserver(()=>{ if(assetMap) assetMap.invalidateSize(); }).observe(document.getElementById('assetMap'));
+}
+function renderMap(){
+  if(!mapInited) return;
+  [clusterCgs,clusterDrs,clusterMother,clusterDaughter,clusterLng].forEach(c=>c.clearLayers());
+  pipeLayer.clearLayers();
+  document.getElementById('mapStatsTag').textContent = totalAssets()+' assets';
+
+  pipelineList.forEach(p=>{
+    const color = p.status==='alert'?cssVar('--alert'):p.status==='warn'?cssVar('--warn'):cssVar('--line');
+    L.polyline([[p.fromLat,p.fromLng],[p.toLat,p.toLng]], {color, weight:p.status==='alert'?3:1.5, opacity:.55}).addTo(pipeLayer);
+  });
+
+  cgsList.forEach(c=>{
+    const marker = L.marker([c.lat,c.lng], {icon:L.divIcon({html:`<div style="width:16px;height:16px;border-radius:3px;background:${cssVar('--cgs')};border:2px solid ${cssVar('--panel')};box-shadow:0 0 6px ${cssVar('--cgs')};"></div>`, className:'', iconSize:[16,16]})});
+    marker.bindTooltip(`<div class="ht-title">${c.name}</div><div class="ht-row"><span>Inlet</span><span>${c.inletPressure.toFixed(1)} bar</span></div><div class="ht-row"><span>Outlet</span><span>${c.outletPressure.toFixed(1)} bar</span></div>`, {direction:'top', offset:[0,-10], opacity:1, className:'meter-hover-tip', sticky:true});
+    marker.on('click', ()=>openDrawer('cgs', c.id));
+    clusterCgs.addLayer(marker);
+  });
+  drsList.forEach(d=>{
+    const marker = L.marker([d.lat,d.lng], {icon:L.divIcon({html:`<div style="width:13px;height:13px;border-radius:3px;background:${cssVar('--drs')};border:2px solid ${cssVar('--panel')};box-shadow:0 0 6px ${cssVar('--drs')};"></div>`, className:'', iconSize:[13,13]})});
+    marker.bindTooltip(`<div class="ht-title">${d.name}</div><div class="ht-row"><span>Outlet</span><span>${d.outletPressure.toFixed(1)} bar</span></div><div class="ht-row"><span>MRS</span><span>${d.mrsCount}</span></div>`, {direction:'top', offset:[0,-10], opacity:1, className:'meter-hover-tip', sticky:true});
+    marker.on('click', ()=>openDrawer('drs', d.id));
+    clusterDrs.addLayer(marker);
+  });
+  motherList.forEach(m=>{
+    const marker = L.marker([m.lat,m.lng], {icon:L.divIcon({html:`<div style="width:14px;height:14px;border-radius:50%;background:${cssVar('--mother')};border:2px solid ${cssVar('--panel')};box-shadow:0 0 6px ${cssVar('--mother')};"></div>`, className:'', iconSize:[14,14]})});
+    marker.bindTooltip(`<div class="ht-title">${m.name}</div><div class="ht-row"><span>Outlet</span><span>${m.outletPressure.toFixed(0)} bar</span></div><div class="ht-row"><span>Bays full</span><span>${m.bays.filter(b=>b&&b.status==='full').length}/6</span></div>`, {direction:'top', offset:[0,-10], opacity:1, className:'meter-hover-tip', sticky:true});
+    marker.on('click', ()=>openDrawer('mother', m.id));
+    clusterMother.addLayer(marker);
+  });
+  daughterList.forEach(d=>{
+    const color = dsColor(d);
+    const marker = L.marker([d.lat,d.lng], {icon:L.divIcon({html:`<div style="width:11px;height:11px;border-radius:50%;background:${color};border:1.5px solid ${cssVar('--panel')};box-shadow:0 0 5px ${color};"></div>`, className:'', iconSize:[11,11]})});
+    marker.bindTooltip(`<div class="ht-title">${d.name}</div><div class="ht-row"><span>Cascade</span><span>${d.cascadePressure.toFixed(0)}%</span></div><div class="ht-row"><span>Source</span><span>${d.sourceType==='lng'?'LNG':'Mother CNG'}</span></div>`, {direction:'top', offset:[0,-8], opacity:1, className:'meter-hover-tip', sticky:true});
+    marker.on('click', ()=>openDrawer('daughter', d.id));
+    clusterDaughter.addLayer(marker);
+  });
+  lngList.forEach(l=>{
+    const marker = L.marker([l.lat,l.lng], {icon:L.divIcon({html:`<div style="width:18px;height:18px;border-radius:4px;background:${cssVar('--lng')};border:2px solid ${cssVar('--panel')};box-shadow:0 0 8px ${cssVar('--lng')};"></div>`, className:'', iconSize:[18,18]})});
+    marker.bindTooltip(`<div class="ht-title">${l.name}</div><div class="ht-row"><span>Tank level</span><span>${l.tankLevel.toFixed(0)}%</span></div><div class="ht-row"><span>Regas Rate</span><span>${l.vaporizer.metrics[0].value.toFixed(0)} Nm³/hr</span></div>`, {direction:'top', offset:[0,-10], opacity:1, className:'meter-hover-tip', sticky:true});
+    marker.on('click', ()=>openDrawer('lng', l.id));
+    clusterLng.addLayer(marker);
+  });
+}
+
+/* ============================================================
+   GA DASHBOARD
+   ============================================================ */
+function laugBadgeClass(l){ return l<7?'good':l<8.5?'watch':'bad'; }
+function renderGaCards(){
+  document.getElementById('gaCardsWrap').innerHTML = GAs.map(ga=>{
+    const gi = gaGasIn(ga), go = gaGasOut(ga), laug = gaLaug(ga);
+    const nCgs = cgsList.filter(c=>c.gaId===ga.id).length, nDrs = drsList.filter(d=>d.gaId===ga.id).length;
+    const nMother = motherList.filter(m=>m.gaId===ga.id).length, nDaughter = daughterList.filter(d=>d.gaId===ga.id).length;
+    const nLng = lngList.filter(l=>l.gaId===ga.id).length;
+    return `<div class="ga-card" onclick="openDrawer('ga','${ga.id}')">
+      <div class="gc-name">${ga.name}</div>
+      <div class="gc-sub">${ga.city} · ${nCgs} CGS · ${nDrs} DRS</div>
+      <div class="gc-io">
+        <div class="item"><div class="l">Gas In</div><div class="v">${gi.toFixed(0)} SCMH</div></div>
+        <div class="item"><div class="l">Gas Out</div><div class="v">${go.toFixed(0)} SCMH</div></div>
+      </div>
+      <div class="gc-laug"><span style="color:var(--muted)">LAUG</span><span class="laug-badge ${laugBadgeClass(laug)}">${laug.toFixed(2)}%</span></div>
+      <div class="gc-counts">
+        <span>Mother: <b style="color:var(--text)">${nMother}</b></span>
+        <span>Daughter: <b style="color:var(--text)">${nDaughter}</b></span>
+        <span>LNG: <b style="color:var(--text)">${nLng}</b></span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ============================================================
+   CGS / DRS / MOTHER / DAUGHTER / LNG LIST VIEWS
+   ============================================================ */
+function fillGaFilter(selId){
+  const sel = document.getElementById(selId);
+  GAs.forEach(g=>{ const o=document.createElement('option'); o.value=g.id; o.textContent=g.name; sel.appendChild(o); });
+}
+['cgsGaFilter','drsGaFilter','motherGaFilter','dsGaFilter'].forEach(fillGaFilter);
+
+document.getElementById('cgsGaFilter').addEventListener('input', renderCgsList);
+document.getElementById('cgsSearch').addEventListener('input', renderCgsList);
+function renderCgsList(){
+  const ga = document.getElementById('cgsGaFilter').value, q = document.getElementById('cgsSearch').value.trim().toLowerCase();
+  const list = cgsList.filter(c=>(ga==='all'||c.gaId===ga) && (!q||c.name.toLowerCase().includes(q)||c.id.toLowerCase().includes(q)));
+  document.getElementById('cgsCountTag').textContent = list.length+' stations';
+  document.getElementById('cgsListWrap').innerHTML = list.length ? `<div class="meter-cards">${list.map(c=>`
+    <div class="meter-card" onclick="openDrawer('cgs','${c.id}')">
+      <div class="mc-top"><div><div class="mc-id">${c.name}</div><div style="font-size:9.5px;color:var(--muted);margin-top:1px;">${c.id}</div></div><span class="badge ${c.status}">${c.status.toUpperCase()}</span></div>
+      <div class="mc-flow" style="color:var(--cgs)">${c.flowRate.toFixed(0)} <span>SCMH</span></div>
+      <div class="mc-meta">Inlet ${c.inletPressure.toFixed(1)} bar → Outlet ${c.outletPressure.toFixed(1)} bar</div>
+    </div>`).join('')}</div>` : `<div class="panel" style="text-align:center; color:var(--muted); padding:40px;">No CGS match this filter.</div>`;
+}
+
+document.getElementById('drsGaFilter').addEventListener('input', renderDrsList);
+document.getElementById('drsSearch').addEventListener('input', renderDrsList);
+function renderDrsList(){
+  const ga = document.getElementById('drsGaFilter').value, q = document.getElementById('drsSearch').value.trim().toLowerCase();
+  const list = drsList.filter(d=>(ga==='all'||d.gaId===ga) && (!q||d.name.toLowerCase().includes(q)||d.id.toLowerCase().includes(q)));
+  document.getElementById('drsCountTag').textContent = list.length+' stations';
+  document.getElementById('drsListWrap').innerHTML = list.length ? `<div class="meter-cards">${list.map(d=>`
+    <div class="meter-card" onclick="openDrawer('drs','${d.id}')">
+      <div class="mc-top"><div><div class="mc-id">${d.name}</div><div style="font-size:9.5px;color:var(--muted);margin-top:1px;">${d.id}</div></div><span class="badge ${d.status}">${d.status.toUpperCase()}</span></div>
+      <div class="mc-flow" style="color:var(--drs)">${d.outletPressure.toFixed(1)} <span>bar</span></div>
+      <div class="mc-meta">${d.mrsCount} MRS units · ${cgsById(d.cgsId)?cgsById(d.cgsId).name:''}</div>
+    </div>`).join('')}</div>` : `<div class="panel" style="text-align:center; color:var(--muted); padding:40px;">No DRS match this filter.</div>`;
+}
+
+document.getElementById('motherGaFilter').addEventListener('input', renderMotherList);
+document.getElementById('motherSearch').addEventListener('input', renderMotherList);
+function renderMotherList(){
+  const ga = document.getElementById('motherGaFilter').value, q = document.getElementById('motherSearch').value.trim().toLowerCase();
+  const list = motherList.filter(m=>(ga==='all'||m.gaId===ga) && (!q||m.name.toLowerCase().includes(q)||m.id.toLowerCase().includes(q)));
+  document.getElementById('motherCountTag').textContent = list.length+' stations';
+  document.getElementById('motherListWrap').innerHTML = list.length ? `<div class="meter-cards">${list.map(m=>{
+    const full = m.bays.filter(b=>b&&b.status==='full').length, occ = m.bays.filter(b=>b).length;
+    return `<div class="meter-card" onclick="openDrawer('mother','${m.id}')">
+      <div class="mc-top"><div><div class="mc-id">${m.name}</div><div style="font-size:9.5px;color:var(--muted);margin-top:1px;">${m.id}</div></div><span class="badge ${m.status}">${m.status.toUpperCase()}</span></div>
+      <div class="mc-flow" style="color:var(--mother)">${m.outletPressure.toFixed(0)} <span>bar</span></div>
+      <div class="mc-meta">${occ}/6 bays · ${full} full · ${m.compressors.length} compressors · ${m.dispensers.length} dispensers</div>
+    </div>`;
+  }).join('')}</div>` : `<div class="panel" style="text-align:center; color:var(--muted); padding:40px;">No mother stations match this filter.</div>`;
+}
+
+document.getElementById('dsViewModeSeg').addEventListener('click', e=>{
+  const btn = e.target.closest('button'); if(!btn) return;
+  document.querySelectorAll('#dsViewModeSeg button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); dsViewMode = btn.dataset.mode; renderDaughterList();
+});
+let dsViewMode = 'grid';
+['dsGaFilter','dsSourceFilter','dsStatusFilter','dsSearch'].forEach(id=>document.getElementById(id).addEventListener('input', renderDaughterList));
+function filteredDaughters(){
+  const ga = document.getElementById('dsGaFilter').value, src = document.getElementById('dsSourceFilter').value,
+        status = document.getElementById('dsStatusFilter').value, q = document.getElementById('dsSearch').value.trim().toLowerCase();
+  return daughterList.filter(d=> (ga==='all'||d.gaId===ga) && (src==='all'||d.sourceType===src) && (status==='all'||dsStatusKey(d)===status) && (!q||(d.id+' '+d.name).toLowerCase().includes(q)) );
+}
+function renderDaughterList(){
+  const list = filteredDaughters();
+  document.getElementById('dsCountTag').textContent = list.length+' stations';
+  const wrap = document.getElementById('dsListWrap');
+  const grouped = {};
+  list.forEach(d=>{ (grouped[d.city]=grouped[d.city]||[]).push(d); });
+  const cityKeys = Object.keys(grouped).sort();
+  if(!cityKeys.length){ wrap.innerHTML = `<div class="panel" style="text-align:center; color:var(--muted); padding:40px;">No stations match these filters.</div>`; return; }
+  if(dsViewMode==='grid'){
+    wrap.innerHTML = cityKeys.map(city=>`<div class="city-section">
+      <div class="city-section-head"><h4>${city}</h4><span class="count">${grouped[city].length} stations</span></div>
+      <div class="meter-cards">${grouped[city].map(d=>`
+        <div class="meter-card" onclick="openDrawer('daughter','${d.id}')">
+          <div class="mc-top"><div><div class="mc-id">${d.name}</div><div style="font-size:9.5px;color:var(--muted);margin-top:1px;">${d.id}</div></div><span class="badge ${dsStatusKey(d)}">${dsStatusLabel(d)}</span></div>
+          <div class="mc-flow" style="color:${dsColor(d)}">${d.cascadePressure.toFixed(1)}<span>% cascade</span></div>
+          <div class="mc-meta">${d.sourceType==='lng'?'LNG-fed':'Mother-fed'} · ${d.dispensers.length} dispensers · ${d.dailyVehicles} veh/day</div>
+        </div>`).join('')}</div></div>`).join('');
+  } else {
+    wrap.innerHTML = cityKeys.map(city=>`<div class="city-section">
+      <div class="city-section-head"><h4>${city}</h4><span class="count">${grouped[city].length} stations</span></div>
+      <div class="panel" style="padding:6px 12px;"><table><thead><tr><th>Station</th><th>Cascade</th><th>Source</th><th>Dispensers</th><th>Vehicles/day</th><th>Status</th></tr></thead>
+      <tbody>${grouped[city].map(d=>`<tr onclick="openDrawer('daughter','${d.id}')">
+        <td><b style="font-size:12px">${d.name}</b><br><span style="font-size:9.5px;color:var(--muted)">${d.id}</span></td>
+        <td class="flow" style="color:${dsColor(d)}">${d.cascadePressure.toFixed(1)}%</td>
+        <td><span class="badge ${d.sourceType==='lng'?'lng':'mother'}">${d.sourceType==='lng'?'LNG':'MOTHER'}</span></td>
+        <td>${d.dispensers.length}</td><td>${d.dailyVehicles}</td>
+        <td><span class="badge ${dsStatusKey(d)}">${dsStatusLabel(d)}</span></td></tr>`).join('')}</tbody></table></div></div>`).join('');
+  }
+}
+
+function renderLngList(){
+  document.getElementById('lngCountTag').textContent = lngList.length+' stations';
+  document.getElementById('lngListWrap').innerHTML = `<div class="meter-cards">${lngList.map(l=>{
+    const nDaughter = daughterList.filter(d=>d.sourceId===l.id).length;
+    return `<div class="meter-card" onclick="openDrawer('lng','${l.id}')">
+      <div class="mc-top"><div><div class="mc-id">${l.name}</div><div style="font-size:9.5px;color:var(--muted);margin-top:1px;">${l.id}</div></div><span class="badge ${l.status}">${l.status.toUpperCase()}</span></div>
+      <div class="mc-flow" style="color:var(--lng)">${l.tankLevel.toFixed(0)} <span>% tank level</span></div>
+      <div class="mc-meta">Regas ${l.vaporizer.metrics[0].value.toFixed(0)} Nm³/hr · ${nDaughter} daughters served</div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+/* ============================================================
+   PIPELINE NETWORK VIEW
+   ============================================================ */
+function renderPipelineView(){
+  const normal = pipelineList.filter(p=>p.status==='ok').length;
+  const watch = pipelineList.filter(p=>p.status==='warn').length;
+  const alert = pipelineList.filter(p=>p.status==='alert').length;
+  document.getElementById('pipeStatRow').innerHTML = [
+    ['Total Segments', pipelineList.length],
+    ['Normal', normal],
+    ['Watch', watch],
+    ['Critical', alert],
+  ].map(([l,v])=>`<div class="stat"><div class="label">${l}</div><div class="value">${v}</div></div>`).join('');
+  document.getElementById('pipeCountTag').textContent = pipelineList.length+' segments';
+  document.getElementById('pipeTable').innerHTML = pipelineList.slice().sort((a,b)=>(a.status==='alert'?0:1)-(b.status==='alert'?0:1)).map(p=>`
+    <tr><td>${p.id}</td><td>${p.fromName}</td><td>${p.toName}</td><td><span class="badge ${p.type==='CGS-DRS'?'drs':'mother'}">${p.type}</span></td>
+    <td class="flow" style="color:${p.status==='alert'?'var(--alert)':p.status==='warn'?'var(--warn)':'var(--ok)'}">${p.pressure.toFixed(1)} bar</td>
+    <td>${p.designMin}-${p.designMax} bar</td><td><span class="badge ${p.status}">${p.status.toUpperCase()}</span></td></tr>`).join('');
+}
+
+/* ============================================================
+   PNG DISTRIBUTION VIEW
+   ============================================================ */
+function pngTotals(){
+  const totals = {commercial:0, industrial:0, domestic:0, residential:0};
+  drsList.forEach(d=>{ Object.keys(totals).forEach(k=> totals[k]+=d.segmentMix[k]); });
+  return totals;
+}
+function renderPngView(){
+  const totals = pngTotals();
+  const grand = Object.values(totals).reduce((a,b)=>a+b,0);
+  document.getElementById('pngKpis').innerHTML = [
+    ['Total PNG Offtake', grand.toFixed(0)+' SCMH', 'var(--png)'],
+    ['MRS Units', drsList.reduce((s,d)=>s+d.mrsCount,0), 'var(--drs)'],
+    ['Commercial Share', (totals.commercial/grand*100).toFixed(1)+'%', 'var(--mother)'],
+    ['Residential Share', (totals.residential/grand*100).toFixed(1)+'%', 'var(--daughter)'],
+  ].map(([l,v,c])=>`<div class="kpi"><div class="accent" style="background:${c}"></div><div class="label">${l}</div><div class="value">${v}</div></div>`).join('');
+
+  const elP = document.getElementById('chartPngSegment');
+  if(elP){
+    if(chartPngSegment){ chartPngSegment.data.datasets[0].data = Object.values(totals); chartPngSegment.update(); }
+    else {
+      chartPngSegment = new Chart(elP, { type:'bar',
+        data:{ labels:['Commercial','Industrial','Domestic','Residential'], datasets:[{ data:Object.values(totals), backgroundColor:['#3b82f6','#8b5cf6','#22c55e','#d6a52a'], borderRadius:5, borderSkipped:false }] },
+        options:{ maintainAspectRatio:false, indexAxis:'y', plugins:{legend:{display:false}},
+          scales:{ x:{grid:{color:cssVar('--line')},ticks:{color:cssVar('--muted'),maxTicksLimit:4}}, y:{grid:{display:false},ticks:{color:cssVar('--text-dim')}} } }
+      });
+    }
+  }
+  const el = document.getElementById('pngGaBars');
+  const gaVals = GAs.map(ga=>({name:ga.name, total: drsList.filter(d=>d.gaId===ga.id).reduce((s,d)=>s+Object.values(d.segmentMix).reduce((a,b)=>a+b,0),0)}));
+  const max = Math.max(...gaVals.map(g=>g.total),1);
+  el.innerHTML = gaVals.sort((a,b)=>b.total-a.total).map(g=>`
+    <div class="zonebar-row"><div class="zname">${g.name}</div>
+      <div class="zonebar-track"><div class="zonebar-fill" style="width:${(g.total/max*100).toFixed(0)}%; background:var(--png)"></div></div>
+      <div class="zonebar-val">${g.total.toFixed(0)} SCMH</div></div>`).join('');
+}
+
+/* ============================================================
+   ANALYTICS & LAUG VIEW
+   ============================================================ */
+function renderAnalyticsView(){
+  const gi = totalGasIn(), go = totalGasOut(), laug = networkLaug();
+  const worstGa = GAs.slice().sort((a,b)=>gaLaug(b)-gaLaug(a))[0];
+  document.getElementById('laugKpis').innerHTML = [
+    ['Network Gas In', gi.toFixed(0)+' SCMH', 'var(--cgs)'],
+    ['Network Gas Out', go.toFixed(0)+' SCMH', 'var(--mother)'],
+    ['Network LAUG', laug.toFixed(2)+'%', laug<7?'var(--ok)':laug<8.5?'var(--warn)':'var(--alert)'],
+    ['Highest Risk GA', worstGa.name, 'var(--alert)'],
+  ].map(([l,v,c])=>`<div class="kpi"><div class="accent" style="background:${c}"></div><div class="label">${l}</div><div class="value" style="font-size:16px">${v}</div></div>`).join('');
+
+  const elL = document.getElementById('chartLaug');
+  if(elL){
+    const laugs = GAs.map(gaLaug);
+    if(chartLaug){ chartLaug.data.datasets[0].data = laugs; chartLaug.data.datasets[0].backgroundColor = laugs.map(l=>l<7?'#2bb673':l<8.5?'#d6a52a':'#e6435f'); chartLaug.update(); }
+    else {
+      chartLaug = new Chart(elL, { type:'bar',
+        data:{ labels:GAs.map(g=>g.city), datasets:[{ data:laugs, backgroundColor: laugs.map(l=>l<7?'#2bb673':l<8.5?'#d6a52a':'#e6435f'), borderRadius:5, borderSkipped:false }] },
+        options:{ maintainAspectRatio:false, plugins:{legend:{display:false}},
+          scales:{ x:{grid:{display:false},ticks:{color:cssVar('--muted'), font:{size:9}}}, y:{grid:{color:cssVar('--line')},ticks:{color:cssVar('--muted'),maxTicksLimit:5}} } }
+      });
+    }
+  }
+  const elB = document.getElementById('chartBalance');
+  if(elB){
+    const lossVal = Math.max(0, gi-go);
+    if(chartBalance){ chartBalance.data.datasets[0].data = [go, lossVal]; chartBalance.update(); }
+    else {
+      chartBalance = new Chart(elB, { type:'bar',
+        data:{ labels:['Metered Output','Loss / Unaccounted'], datasets:[{ data:[go, lossVal], backgroundColor:['#14b8a6','#e6435f'], borderRadius:5, borderSkipped:false }] },
+        options:{ maintainAspectRatio:false, indexAxis:'y', plugins:{legend:{display:false}},
+          scales:{ x:{grid:{color:cssVar('--line')},ticks:{color:cssVar('--muted')}}, y:{grid:{display:false},ticks:{color:cssVar('--text-dim')}} } }
+      });
+    }
+  }
+}
+
+/* ============================================================
+   DETAIL DRAWER
+   ============================================================ */
+const drawerOverlay = document.getElementById('drawerOverlay');
+const meterDrawer = document.getElementById('meterDrawer');
+let drawerMap = null;
+let drawerChart = null;
+document.getElementById('drawerCloseBtn').addEventListener('click', closeDrawer);
+drawerOverlay.addEventListener('click', closeDrawer);
+function closeDrawer(){ drawerOverlay.classList.remove('open'); meterDrawer.classList.remove('open'); }
+function finishDrawerOpen(lat,lng){
+  drawerOverlay.classList.add('open'); meterDrawer.classList.add('open');
+  setTimeout(()=>{
+    const mapEl = document.getElementById('dDrawerMap'); if(!mapEl) return;
+    if(drawerMap){ drawerMap.remove(); drawerMap=null; }
+    drawerMap = L.map('dDrawerMap', {zoomControl:false, dragging:false, scrollWheelZoom:false}).setView([lat,lng], 11);
+    L.tileLayer(currentMapTileUrl(), {subdomains:'abcd'}).addTo(drawerMap);
+    L.marker([lat,lng]).addTo(drawerMap);
+    drawerMap.invalidateSize();
+  }, 120);
+}
+const METRIC_META = {
+  dp:{label:'ΔP', unit:'bar', dec:2},
+  temp:{label:'Outlet Temp', unit:'°C', dec:1},
+  pressure:{label:'Outlet Pressure', unit:'bar', dec:1},
+  pressure_in:{label:'Inlet Pressure', unit:'bar', dec:1},
+  pressure_out:{label:'Outlet Pressure', unit:'bar', dec:1},
+  flow:{label:'Flow Rate', unit:'SCMH', dec:0},
+  dosing:{label:'Dosing Rate', unit:'mg/Sm³', dec:1},
+  spc:{label:'SPC', unit:'kWh/Nm³', dec:2},
+  util:{label:'Utilization', unit:'%', dec:0},
+  regas:{label:'Regas Rate', unit:'Nm³/hr', dec:0},
+};
+function equipRowHTML(eq, color){
+  const runStatus = eq.runStatus || 'normal';
+  const runColor = (runStatus==='tripped'||runStatus==='fault') ? cssVar('--alert') : runStatus==='stopped' ? cssVar('--muted') : cssVar('--ok');
+  const commStatus = eq.commStatus || 'online';
+  const commColor = commStatus==='online' ? cssVar('--ok') : cssVar('--alert');
+  const metrics = eq.metrics || [];
+  const metricsStr = metrics.map(m=>{
+    const meta = METRIC_META[m.kind] || {label:m.kind, unit:'', dec:1};
+    return `${meta.label}: <b style="color:var(--text)">${m.value.toFixed(meta.dec)}</b>${meta.unit?' '+meta.unit:''}`;
+  }).join(' &nbsp;·&nbsp; ');
+  return `<div class="equip-row" style="flex-direction:column; align-items:stretch; gap:7px; padding:11px 12px;">
+    <div style="display:flex; align-items:center; gap:9px;">
+      <div class="eq-icon" style="background:${color}22; color:${color}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 3"/></svg></div>
+      <div class="eq-name" style="flex:1">${eq.name}</div>
+      <span class="badge" style="background:${runColor}22;color:${runColor}">${runStatus.toUpperCase()}</span>
+    </div>
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding-left:37px; flex-wrap:wrap;">
+      <span style="font-family:var(--font-mono); font-size:10px; color:var(--muted);">${metricsStr}</span>
+      <span style="font-family:var(--font-mono); font-size:9.5px; display:flex; align-items:center; gap:4px; color:${commColor}; flex-shrink:0;"><i style="width:6px;height:6px;border-radius:50%;background:${commColor};display:inline-block;"></i>${commStatus==='online'?'COMM OK':'COMM LOST'}</span>
+    </div>
+  </div>`;
+}
+function dispenserTableHTML(station){
+  const total = station.dispensers.reduce((s,d)=>s+d.sideA+d.sideB,0);
+  const rows = station.dispensers.map(d=>`
+    <tr><td>${d.name}</td><td>${d.sideA.toFixed(1)} kg</td><td>${d.sideB.toFixed(1)} kg</td>
+    <td class="flow">${(d.sideA+d.sideB).toFixed(1)} kg</td>
+    <td><span class="badge ok" style="background:${d.commStatus==='online'?'rgba(43,182,115,.13)':'rgba(230,67,95,.13)'};color:${d.commStatus==='online'?'var(--ok)':'var(--alert)'}">${d.commStatus==='online'?'ONLINE':'OFFLINE'}</span></td></tr>`).join('');
+  return `<table><thead><tr><th>Dispenser</th><th>Side A</th><th>Side B</th><th>Total</th><th>Comm</th></tr></thead><tbody>${rows}</tbody></table>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; padding:10px 12px; background:var(--panel-3); border-radius:8px; font-family:var(--font-mono); font-size:12px;">
+      <span style="color:var(--muted)">STATION TOTAL SALES TODAY</span><b style="font-size:15px">${total.toFixed(1)} kg</b>
+    </div>`;
+}
+function renderSalesHistoryChart(station, color){
+  color = color || cssVar('--mother');
+  if(drawerChart){ drawerChart.destroy(); drawerChart=null; }
+  const el = document.getElementById('dSalesChart'); if(!el) return;
+  const labels = ['-6d','-5d','-4d','-3d','-2d','-1d','Today'];
+  drawerChart = new Chart(el, { type:'bar',
+    data:{ labels, datasets:[{ data:station.salesHistory7d, backgroundColor: labels.map((_,i)=>i===6?color:color+'77'), borderRadius:5, borderSkipped:false }] },
+    options:{ maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{ x:{grid:{display:false},ticks:{color:cssVar('--muted')}}, y:{grid:{color:cssVar('--line')},ticks:{color:cssVar('--muted'),maxTicksLimit:5}} } }
+  });
+}
+function openDrawer(type,id){
+  if(type==='ga') return openGaDrawer(id);
+  if(type==='cgs') return openCgsDrawer(id);
+  if(type==='drs') return openDrsDrawer(id);
+  if(type==='mother') return openMotherDrawer(id);
+  if(type==='daughter') return openDaughterDrawer(id);
+  if(type==='lng') return openLngDrawer(id);
+}
+function openGaDrawer(id){
+  const ga = gaById(id); if(!ga) return;
+  const gi=gaGasIn(ga), go=gaGasOut(ga), laug=gaLaug(ga);
+  document.getElementById('dDrawerId').textContent = ga.name;
+  document.getElementById('dDrawerSub').innerHTML = `${ga.city} · <span class="laug-badge ${laugBadgeClass(laug)}">LAUG ${laug.toFixed(2)}%</span>`;
+  document.getElementById('drawerBody').innerHTML = `
+    <div class="d-stats">
+      <div class="ds"><div class="l">Gas In</div><div class="v">${gi.toFixed(0)} SCMH</div></div>
+      <div class="ds"><div class="l">Gas Out</div><div class="v">${go.toFixed(0)} SCMH</div></div>
+      <div class="ds"><div class="l">CGS</div><div class="v">${cgsList.filter(c=>c.gaId===ga.id).length}</div></div>
+      <div class="ds"><div class="l">DRS</div><div class="v">${drsList.filter(d=>d.gaId===ga.id).length}</div></div>
+      <div class="ds"><div class="l">Mother CNG</div><div class="v">${motherList.filter(m=>m.gaId===ga.id).length}</div></div>
+      <div class="ds"><div class="l">LNG</div><div class="v">${lngList.filter(l=>l.gaId===ga.id).length}</div></div>
+      <div class="ds"><div class="l">Daughter Stations</div><div class="v">${daughterList.filter(d=>d.gaId===ga.id).length}</div></div>
+      <div class="ds"><div class="l">LAUG Status</div><div class="v" style="font-size:13px">${laug<7?'Healthy':laug<8.5?'Watch':'Investigate'}</div></div>
+    </div>
+    <div class="d-section-title">Location</div>
+    <div id="dDrawerMap" style="height:150px; border-radius:8px; border:1px solid var(--line);"></div>`;
+  finishDrawerOpen(ga.lat, ga.lng);
+}
+function openCgsDrawer(id){
+  const c = cgsById(id); if(!c) return;
+  document.getElementById('dDrawerId').textContent = c.name;
+  document.getElementById('dDrawerSub').innerHTML = `${c.city} · <span class="badge cgs">CITY GATE STATION</span>`;
+  const related = eventLog.filter(e=>e.asset && e.asset.id===c.id).slice(0,10);
+  document.getElementById('drawerBody').innerHTML = `
+    <div class="d-stats">
+      <div class="ds"><div class="l">Inlet Pressure</div><div class="v">${c.inletPressure.toFixed(1)} bar</div></div>
+      <div class="ds"><div class="l">Outlet Pressure</div><div class="v">${c.outletPressure.toFixed(1)} bar</div></div>
+      <div class="ds"><div class="l">Flow Rate</div><div class="v">${c.flowRate.toFixed(0)} SCMH</div></div>
+      <div class="ds"><div class="l">GA</div><div class="v" style="font-size:13px">${gaById(c.gaId).name}</div></div>
+    </div>
+    <div class="d-section-title">Equipment</div>
+    <div class="equip-list">${c.equipment.map(eq=>equipRowHTML(eq,'var(--cgs)')).join('')}</div>
+    <div class="d-section-title">Related alerts</div>
+    <div class="feed" id="dDrawerFeedDynamic" style="max-height:180px;"></div>
+    <div class="d-section-title">Location</div>
+    <div id="dDrawerMap" style="height:150px; border-radius:8px; border:1px solid var(--line);"></div>`;
+  renderFeed('dDrawerFeedDynamic', related);
+  finishDrawerOpen(c.lat, c.lng);
+}
+function openDrsDrawer(id){
+  const d = drsById(id); if(!d) return;
+  document.getElementById('dDrawerId').textContent = d.name;
+  document.getElementById('dDrawerSub').innerHTML = `${d.city} · <span class="badge drs">DISTRICT REGULATING STATION</span>`;
+  const related = eventLog.filter(e=>e.asset && e.asset.id===d.id).slice(0,10);
+  document.getElementById('drawerBody').innerHTML = `
+    <div class="d-stats">
+      <div class="ds"><div class="l">Inlet Pressure</div><div class="v">${d.inletPressure.toFixed(1)} bar</div></div>
+      <div class="ds"><div class="l">Outlet Pressure</div><div class="v">${d.outletPressure.toFixed(1)} bar</div></div>
+      <div class="ds"><div class="l">MRS Units</div><div class="v">${d.mrsCount}</div></div>
+      <div class="ds"><div class="l">Parent CGS</div><div class="v" style="font-size:12px">${cgsById(d.cgsId)?cgsById(d.cgsId).name:'—'}</div></div>
+    </div>
+    <div class="d-section-title">Consumer segment offtake (SCMH)</div>
+    <div class="equip-list">
+      ${Object.entries(d.segmentMix).map(([k,v])=>`<div class="equip-row"><div class="eq-icon" style="background:var(--png)22; color:var(--png)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-6 9 6v11a1 1 0 0 1-1 1h-4v-7H9v7H4a1 1 0 0 1-1-1V9Z"/></svg></div><div class="eq-name" style="text-transform:capitalize">${k}</div><div class="eq-meta">${v.toFixed(1)} SCMH</div></div>`).join('')}
+    </div>
+    <div class="d-section-title">Equipment</div>
+    <div class="equip-list">${d.equipment.map(eq=>equipRowHTML(eq,'var(--drs)')).join('')}</div>
+    <div class="d-section-title">Related alerts</div>
+    <div class="feed" id="dDrawerFeedDynamic" style="max-height:180px;"></div>
+    <div class="d-section-title">Location</div>
+    <div id="dDrawerMap" style="height:150px; border-radius:8px; border:1px solid var(--line);"></div>`;
+  renderFeed('dDrawerFeedDynamic', related);
+  finishDrawerOpen(d.lat, d.lng);
+}
+function openMotherDrawer(id){
+  const m = motherById(id); if(!m) return;
+  const occ = m.bays.filter(b=>b).length, full = m.bays.filter(b=>b&&b.status==='full').length;
+  document.getElementById('dDrawerId').textContent = m.name;
+  document.getElementById('dDrawerSub').innerHTML = `${m.city} · <span class="badge mother">MOTHER CNG STATION</span>`;
+  const related = eventLog.filter(e=>e.asset && e.asset.id===m.id).slice(0,10);
+  document.getElementById('drawerBody').innerHTML = `
+    <div class="d-stats">
+      <div class="ds"><div class="l">Inlet Pressure</div><div class="v">${m.inletPressure.toFixed(1)} bar</div></div>
+      <div class="ds"><div class="l">Outlet Pressure</div><div class="v">${m.outletPressure.toFixed(0)} bar</div></div>
+      <div class="ds"><div class="l">Gas In Today</div><div class="v">${m.gasInToday.toFixed(0)} SCM</div></div>
+      <div class="ds"><div class="l">Gas Out Today</div><div class="v">${m.gasOutToday.toFixed(0)} SCM</div></div>
+      <div class="ds"><div class="l">Dispensers</div><div class="v">${m.dispensers.length}</div></div>
+      <div class="ds"><div class="l">Vehicles/day</div><div class="v">${m.dailyVehicles}</div></div>
+    </div>
+    <div class="d-section-title">Compressors</div>
+    <div class="equip-list">${m.compressors.map(eq=>equipRowHTML(eq,'var(--mother)')).join('')}</div>
+    <div class="d-section-title">Cascade filling bays (${full} full / ${occ} occupied / 6 total)</div>
+    <div class="bay-grid">${m.bays.map((b,i)=>{
+      if(!b) return `<div class="bay-cell empty"><div class="bc-status">Bay ${i+1}</div><div class="bc-fill"><div class="bc-fill-inner" style="width:0%"></div></div><div class="bc-pct">Empty</div></div>`;
+      const isFull = b.status==='full';
+      return `<div class="bay-cell"><div class="bc-status">Bay ${i+1}</div><div class="bc-fill"><div class="bc-fill-inner" style="width:${b.pressure}%; background:${isFull?'var(--ok)':'var(--warn)'}"></div></div><div class="bc-pct" style="color:${isFull?'var(--ok)':'var(--warn)'}">${b.pressure.toFixed(0)}%</div></div>`;
+    }).join('')}</div>
+    <div class="d-section-title">Dispenser sales — Side A / Side B</div>
+    ${dispenserTableHTML(m)}
+    <div class="d-section-title">Last 7 Days Sales <span style="color:var(--muted)">(kg)</span></div>
+    <canvas id="dSalesChart" style="max-height:160px;"></canvas>
+    <div class="d-section-title">Related alerts</div>
+    <div class="feed" id="dDrawerFeedDynamic" style="max-height:180px;"></div>
+    <div class="d-section-title">Location</div>
+    <div id="dDrawerMap" style="height:150px; border-radius:8px; border:1px solid var(--line);"></div>`;
+  renderFeed('dDrawerFeedDynamic', related);
+  finishDrawerOpen(m.lat, m.lng);
+  renderSalesHistoryChart(m);
+}
+function openDaughterDrawer(id){
+  const d = daughterById(id); if(!d) return;
+  const src = d.sourceType==='lng' ? lngById(d.sourceId) : motherById(d.sourceId);
+  document.getElementById('dDrawerId').textContent = d.name;
+  document.getElementById('dDrawerSub').innerHTML = `${d.city} · <span class="badge ${dsStatusKey(d)}">${dsStatusLabel(d)}</span>`;
+  const related = eventLog.filter(e=>e.asset && e.asset.id===d.id).slice(0,10);
+  document.getElementById('drawerBody').innerHTML = `
+    <div class="d-stats">
+      <div class="ds"><div class="l">Cascade Pressure</div><div class="v" style="color:${dsColor(d)}">${d.cascadePressure.toFixed(1)}%</div></div>
+      <div class="ds"><div class="l">Source</div><div class="v" style="font-size:12px">${src?src.name:'—'}</div></div>
+      <div class="ds"><div class="l">Dispensers</div><div class="v">${d.dispensers.length}</div></div>
+      <div class="ds"><div class="l">Vehicles/day</div><div class="v">${d.dailyVehicles}</div></div>
+    </div>
+    <div class="d-section-title">Booster compressor</div>
+    <div class="equip-list">${equipRowHTML(d.booster, 'var(--daughter)')}</div>
+    <div class="d-section-title">Dispenser sales — Side A / Side B</div>
+    ${dispenserTableHTML(d)}
+    <div class="d-section-title">Last 7 Days Sales <span style="color:var(--muted)">(kg)</span></div>
+    <canvas id="dSalesChart" style="max-height:160px;"></canvas>
+    <div class="d-section-title">Related alerts</div>
+    <div class="feed" id="dDrawerFeedDynamic" style="max-height:180px;"></div>
+    <div class="d-section-title">Location</div>
+    <div id="dDrawerMap" style="height:150px; border-radius:8px; border:1px solid var(--line);"></div>`;
+  renderFeed('dDrawerFeedDynamic', related);
+  finishDrawerOpen(d.lat, d.lng);
+  renderSalesHistoryChart(d, cssVar('--daughter'));
+}
+function openLngDrawer(id){
+  const l = lngById(id); if(!l) return;
+  const nDaughter = daughterList.filter(d=>d.sourceId===l.id).length;
+  document.getElementById('dDrawerId').textContent = l.name;
+  document.getElementById('dDrawerSub').innerHTML = `${l.city} · <span class="badge lng">LNG STATION</span>`;
+  const related = eventLog.filter(e=>e.asset && e.asset.id===l.id).slice(0,10);
+  document.getElementById('drawerBody').innerHTML = `
+    <div class="d-stats">
+      <div class="ds"><div class="l">Tank Level</div><div class="v" style="color:${l.tankLevel<25?'var(--alert)':l.tankLevel<50?'var(--warn)':'var(--ok)'}">${l.tankLevel.toFixed(1)}%</div></div>
+      <div class="ds"><div class="l">Tank Capacity</div><div class="v">${l.tankCapacityKL} KL</div></div>
+      <div class="ds"><div class="l">Outlet Pressure</div><div class="v">${l.outletPressure.toFixed(0)} bar</div></div>
+      <div class="ds"><div class="l">Daughters Served</div><div class="v">${nDaughter}</div></div>
+      <div class="ds"><div class="l">Filling Posts</div><div class="v">${l.fillingPosts}</div></div>
+      <div class="ds"><div class="l">Dispatches/day</div><div class="v">${l.dailyDispatches}</div></div>
+    </div>
+    <div class="d-section-title">Regasification &amp; compression</div>
+    <div class="equip-list">
+      ${equipRowHTML(l.vaporizer, 'var(--lng)')}
+      ${equipRowHTML(l.compressor, 'var(--lng)')}
+    </div>
+    <div class="d-section-title">Related alerts</div>
+    <div class="feed" id="dDrawerFeedDynamic" style="max-height:180px;"></div>
+    <div class="d-section-title">Location</div>
+    <div id="dDrawerMap" style="height:150px; border-radius:8px; border:1px solid var(--line);"></div>`;
+  renderFeed('dDrawerFeedDynamic', related);
+  finishDrawerOpen(l.lat, l.lng);
+}
+
+/* ============================================================
+   ALARMS VIEW
+   ============================================================ */
+let sevFilterVal = 'all';
+document.getElementById('sevFilter').addEventListener('click',(e)=>{
+  const chip = e.target.closest('.sev-chip'); if(!chip) return;
+  document.querySelectorAll('#sevFilter .sev-chip').forEach(c=>c.classList.remove('active'));
+  chip.classList.add('active'); sevFilterVal = chip.dataset.sev; renderAlarmsView();
+});
+function renderAlarmsView(){
+  const critical = eventLog.filter(e=>e.severity==='alert').length;
+  const warn = eventLog.filter(e=>e.severity==='warn').length;
+  const resolved = eventLog.filter(e=>e.severity==='ok').length;
+  document.getElementById('alarmKpis').innerHTML = [
+    ['Total events (session)', eventLog.length, 'var(--text)'],
+    ['Critical', critical, 'var(--alert)'],
+    ['Warnings', warn, 'var(--warn)'],
+    ['Resolved / nominal', resolved, 'var(--ok)'],
+  ].map(([l,v,c])=>`<div class="kpi"><div class="accent" style="background:${c}"></div><div class="label">${l}</div><div class="value">${v}</div></div>`).join('');
+  const list = sevFilterVal==='all' ? eventLog : eventLog.filter(e=>e.severity===sevFilterVal);
+  document.getElementById('alarmCountTag').textContent = list.length+' events';
+  document.getElementById('alarmTable').innerHTML = list.slice(0,60).map((ev)=>{
+    return `<tr><td>${ev.time}</td><td><span class="badge ${ev.severity}">${ev.severity.toUpperCase()}</span></td>
+      <td>${ev.asset.name}</td><td>${ev.asset.city||''}</td><td style="font-family:var(--font-display);">${ev.msg}</td>
+      <td><button class="ack-btn ${ev.acked?'done':''}" onclick="ackEvent(${eventLog.indexOf(ev)}, this)">${ev.acked?'Acked':'Acknowledge'}</button></td></tr>`;
+  }).join('') || `<tr><td colspan="6" style="text-align:center; color:var(--muted); padding:24px;">No events in this category.</td></tr>`;
+}
+function ackEvent(idx, btn){ if(eventLog[idx]){ eventLog[idx].acked = true; btn.textContent='Acked'; btn.classList.add('done'); } }
+document.getElementById('exportAlarmsBtn').addEventListener('click', ()=>{
+  const rows = [['Time','Severity','Asset','City','Description']].concat(eventLog.map(e=>[e.time,e.severity,e.asset.name,e.asset.city||'',e.msg]));
+  const csv = rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'altrex-grid-alarms-export.csv'; a.click();
+});
+
+/* ============================================================
+   PDF REPORTS
+   ============================================================ */
+function generateReport(type){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'pt', format:'a4'});
+  const pageW = doc.internal.pageSize.getWidth();
+  const margin = 40; let y = 50;
+  doc.setFillColor(59,130,246); doc.rect(0,0,pageW,70,'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(18);
+  doc.text('Altrex Grid — CGD Asset Management Console', margin, 32);
+  doc.setFontSize(10); doc.setFont('helvetica','normal');
+  doc.text('Demo report · generated ' + new Date().toLocaleString(), margin, 50);
+  y = 95; doc.setTextColor(20,20,20);
+
+  if(type==='balance'){
+    doc.setFontSize(14); doc.setFont('helvetica','bold'); doc.text('Daily Gas Balance Report', margin, y); y+=22;
+    doc.setFontSize(10); doc.setFont('helvetica','normal');
+    doc.text(`Network gas in: ${totalGasIn().toFixed(0)} SCMH · out: ${totalGasOut().toFixed(0)} SCMH · LAUG: ${networkLaug().toFixed(2)}%`, margin, y); y+=24;
+    doc.setFont('helvetica','bold'); doc.text('GA', margin, y); doc.text('Gas In', margin+160, y); doc.text('Gas Out', margin+250, y); doc.text('LAUG %', margin+340, y); y+=8;
+    doc.line(margin, y, pageW-margin, y); y+=14; doc.setFont('helvetica','normal');
+    GAs.forEach(ga=>{
+      doc.text(ga.name, margin, y); doc.text(gaGasIn(ga).toFixed(0), margin+160, y); doc.text(gaGasOut(ga).toFixed(0), margin+250, y); doc.text(gaLaug(ga).toFixed(2)+'%', margin+340, y);
+      y+=18; if(y>760){ doc.addPage(); y=50; }
+    });
+  }
+  if(type==='pipeline'){
+    doc.setFontSize(14); doc.setFont('helvetica','bold'); doc.text('Pipeline Pressure Report', margin, y); y+=22;
+    doc.setFontSize(9); doc.setFont('helvetica','normal');
+    doc.text(`${pipelineList.length} segments monitored · ${pipelineList.filter(p=>p.status==='alert').length} in alert.`, margin, y); y+=20;
+    doc.setFont('helvetica','bold');
+    doc.text('Segment', margin, y); doc.text('From', margin+80, y); doc.text('To', margin+220, y); doc.text('Pressure', margin+360, y); doc.text('Status', margin+430, y);
+    y+=8; doc.line(margin, y, pageW-margin, y); y+=12; doc.setFont('helvetica','normal');
+    pipelineList.forEach(p=>{
+      doc.text(p.id, margin, y); doc.text(p.fromName, margin+80, y, {maxWidth:130}); doc.text(p.toName, margin+220, y, {maxWidth:130});
+      doc.text(p.pressure.toFixed(1)+' bar', margin+360, y); doc.text(p.status.toUpperCase(), margin+430, y);
+      y+=15; if(y>770){ doc.addPage(); y=50; }
+    });
+  }
+  if(type==='assets'){
+    doc.setFontSize(14); doc.setFont('helvetica','bold'); doc.text('Asset Health & Equipment Audit', margin, y); y+=22;
+    doc.setFontSize(9); doc.setFont('helvetica','normal');
+    doc.text(`${cgsList.length} CGS, ${drsList.length} DRS, ${motherList.length} Mother, ${daughterList.length} Daughter, ${lngList.length} LNG.`, margin, y); y+=20;
+    doc.setFont('helvetica','bold'); doc.text('Asset', margin, y); doc.text('Type', margin+180, y); doc.text('GA', margin+250, y); doc.text('Status', margin+340, y);
+    y+=8; doc.line(margin, y, pageW-margin, y); y+=12; doc.setFont('helvetica','normal');
+    const allAssets = [
+      ...cgsList.map(a=>({name:a.name,type:'CGS',gaId:a.gaId,status:a.status})),
+      ...drsList.map(a=>({name:a.name,type:'DRS',gaId:a.gaId,status:a.status})),
+      ...motherList.map(a=>({name:a.name,type:'Mother CNG',gaId:a.gaId,status:a.status})),
+      ...lngList.map(a=>({name:a.name,type:'LNG',gaId:a.gaId,status:a.status})),
+    ];
+    allAssets.forEach(a=>{
+      doc.text(a.name, margin, y, {maxWidth:170}); doc.text(a.type, margin+180, y); doc.text(gaById(a.gaId)?gaById(a.gaId).city:'', margin+250, y); doc.text(a.status.toUpperCase(), margin+340, y);
+      y+=15; if(y>770){ doc.addPage(); y=50; }
+    });
+  }
+  doc.setFontSize(8); doc.setTextColor(150);
+  doc.text('Simulated demo data — for presentation purposes only. Altrex Grid Console v1.0', margin, 825);
+  doc.save(`altrex-grid-${type}-report.pdf`);
+}
+
+/* ============================================================
+   NOTIFICATION PANEL
+   ============================================================ */
+let notifFilter = 'all';
+let notifRead = new Set();
+const notifPanel   = document.getElementById('notifPanel');
+const notifOverlay = document.getElementById('notifOverlay');
+const bellBtn      = document.getElementById('bellBtn');
+function openNotifPanel(){ if(!notifPanel||!notifOverlay) return; notifPanel.classList.add('open'); notifOverlay.classList.add('open'); renderNotifList(); }
+function closeNotifPanel(){ if(!notifPanel||!notifOverlay) return; notifPanel.classList.remove('open'); notifOverlay.classList.remove('open'); }
+if(bellBtn) bellBtn.addEventListener('click', (e)=>{ e.stopPropagation(); notifPanel && notifPanel.classList.contains('open') ? closeNotifPanel() : openNotifPanel(); });
+if(notifOverlay) notifOverlay.addEventListener('click', closeNotifPanel);
+const _notifClose = document.getElementById('notifClose'); if(_notifClose) _notifClose.addEventListener('click', closeNotifPanel);
+const _notifClear = document.getElementById('notifClear'); if(_notifClear) _notifClear.addEventListener('click', ()=>{
+  eventLog.forEach((_,i)=>notifRead.add(i));
+  const bp = document.getElementById('bellPing'); if(bp) bp.style.display='none';
+  renderNotifList();
+});
+const _notifTabs = document.getElementById('notifTabs'); if(_notifTabs) _notifTabs.addEventListener('click', e=>{
+  const t = e.target.closest('.notif-tab'); if(!t) return;
+  document.querySelectorAll('.notif-tab').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active'); notifFilter = t.dataset.filter; renderNotifList();
+});
+function renderNotifList(){
+  const list = notifFilter==='all' ? eventLog : eventLog.filter(e=>e.severity===notifFilter);
+  const badge = eventLog.filter((_,i)=>!notifRead.has(i)).length;
+  document.getElementById('notifBadge').textContent = badge;
+  document.getElementById('notifBadge').style.display = badge ? 'inline' : 'none';
+  const el = document.getElementById('notifList');
+  if(!list.length){ el.innerHTML = '<div class="notif-empty">No events in this category</div>'; return; }
+  el.innerHTML = list.slice(0,50).map((ev)=>{
+    const color = ev.severity==='alert'?'var(--alert)':ev.severity==='warn'?'var(--warn)':'var(--ok)';
+    const unread = !notifRead.has(eventLog.indexOf(ev));
+    return `<div class="notif-item" onclick="notifRead.add(${eventLog.indexOf(ev)}); closeNotifPanel(); renderNotifList();">
+      <div class="notif-dot" style="background:${color};${ev.severity==='alert'?'box-shadow:0 0 6px '+color:''}"></div>
+      <div class="notif-body">
+        <b${unread?' style="color:var(--text)"':''}>${ev.msg}</b>
+        <div class="nm">${ev.asset.name} · ${ev.asset.city||''}</div>
+        <div class="nt">${ev.time}${unread?' &nbsp;<span style="color:var(--lng);font-size:9px">● NEW</span>':''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ============================================================
+   CLOCK
+   ============================================================ */
+function tickClock(){
+  const t = new Date().toTimeString().slice(0,8);
+  ['clock1','clock2','clock3','clock4'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=t; });
+}
+setInterval(tickClock,1000); tickClock();
+
+/* ============================================================
+   SIMULATION LOOP
+   ============================================================ */
+const METRIC_DRIFT = { dp:0.008, temp:0.5, pressure:0.3, pressure_in:0.25, pressure_out:0.7, flow:60, dosing:0.25, spc:0.008, util:1.5, regas:15 };
+function maybeToggleEquipment(eq, station){
+  if(eq.runStatus){
+    if(eq.runStatus==='running' && Math.random()<0.006){
+      eq.runStatus='tripped';
+      pushEvent(station,'alert', `${eq.name} at ${station.name} TRIPPED — protection trip logged`);
+    } else if(eq.runStatus==='tripped' && Math.random()<0.18){
+      eq.runStatus='running';
+      pushEvent(station,'ok', `${eq.name} at ${station.name} restarted and running normally`);
+    }
+  }
+  if(eq.commStatus){
+    if(eq.commStatus==='online' && Math.random()<0.005){
+      eq.commStatus='offline';
+      pushEvent(station,'warn', `Communication lost with ${eq.name} at ${station.name}`);
+    } else if(eq.commStatus==='offline' && Math.random()<0.3){
+      eq.commStatus='online';
+      pushEvent(station,'ok', `Communication restored with ${eq.name} at ${station.name}`);
+    }
+  }
+  if(eq.metrics){
+    eq.metrics.forEach(m=>{
+      const d = METRIC_DRIFT[m.kind]!==undefined ? METRIC_DRIFT[m.kind] : 0.5;
+      m.value = Math.max(0, m.value + rand(-d,d));
+      if(m.kind==='util') m.value = Math.min(100, m.value);
+    });
+  }
+}
+function stationHasFault(equipArr){ return equipArr.some(e=>e.runStatus==='tripped' || e.commStatus==='offline'); }
+
+function simulateTick(){
+  // LAUG target drifts gently but always stays within the realistic 5-10% band
+  GAs.forEach(ga=>{ ga.laugTarget = Math.max(5, Math.min(10, ga.laugTarget + rand(-0.25,0.25))); });
+
+  // CGS: flow/pressure drift + equipment simulation
+  cgsList.forEach(c=>{
+    c.flowRate = Math.max(1000, c.flowRate + rand(-120,120));
+    c.outletPressure = Math.max(20, Math.min(33, c.outletPressure + rand(-0.3,0.3)));
+    c.equipment.forEach(eq=>maybeToggleEquipment(eq, c));
+    c.status = stationHasFault(c.equipment) ? 'alert' : 'ok';
+  });
+  // DRS: pressure/segment drift + equipment simulation
+  drsList.forEach(d=>{
+    d.outletPressure = Math.max(2, Math.min(9, d.outletPressure + rand(-0.15,0.15)));
+    Object.keys(d.segmentMix).forEach(k=> d.segmentMix[k] = Math.max(2, d.segmentMix[k]+rand(-0.6,0.6)));
+    d.equipment.forEach(eq=>maybeToggleEquipment(eq, d));
+    d.status = stationHasFault(d.equipment) ? 'alert' : 'ok';
+  });
+  // Pipeline pressure drift + alert detection — gentle mean-reversion keeps
+  // readings oscillating naturally around each segment's setpoint instead of
+  // random-walking outside its design range over time.
+  pipelineList.forEach(p=>{
+    if(p.setpoint===undefined) p.setpoint = p.pressure;
+    const pull = (p.setpoint - p.pressure) * 0.06;
+    p.pressure = Math.max(0.5, p.pressure + pull + rand(-0.2,0.2));
+    const prevStatus = p.status;
+    if(p.pressure < p.designMin || p.pressure > p.designMax) p.status='alert';
+    else if(p.pressure < p.designMin+0.6 || p.pressure > p.designMax-0.6) p.status='warn';
+    else p.status='ok';
+    if(p.status==='alert' && prevStatus!=='alert'){
+      pushEvent({name:p.id, city:gaById(p.gaId).city, id:p.id}, 'alert', `Pipeline ${p.id} (${p.fromName} → ${p.toName}) pressure out of range: ${p.pressure.toFixed(1)} bar`);
+    } else if(p.status==='ok' && prevStatus==='alert'){
+      pushEvent({name:p.id, city:gaById(p.gaId).city, id:p.id}, 'ok', `Pipeline ${p.id} pressure restored to normal range`);
+    }
+  });
+  // Mother stations: compressors, bay filling, dispenser sales, gas totals
+  motherList.forEach(m=>{
+    m.compressors.forEach(eq=>maybeToggleEquipment(eq, m));
+    m.bays.forEach(b=>{
+      if(b && b.status==='filling'){
+        b.pressure = Math.min(100, b.pressure+rand(2,5));
+        if(b.pressure>=100) b.status='full';
+      }
+    });
+    m.gasOutToday = Math.max(0, m.gasOutToday + rand(-40,60));
+    m.dispensers.forEach(dd=>{
+      if(dd.status==='active'){ dd.sideA += rand(0,1.2); dd.sideB += rand(0,1.2); }
+    });
+    m.salesHistory7d[6] = m.dispensers.reduce((s,dd)=>s+dd.sideA+dd.sideB,0);
+    m.status = stationHasFault(m.compressors) ? 'alert' : 'ok';
+  });
+  // LNG: tank depletion, vaporizer/compressor, replenishment
+  lngList.forEach(l=>{
+    l.tankLevel = Math.max(5, l.tankLevel - rand(0.1,0.5));
+    maybeToggleEquipment(l.vaporizer, l);
+    maybeToggleEquipment(l.compressor, l);
+    const eqFault = stationHasFault([l.vaporizer, l.compressor]);
+    if(l.tankLevel<20 && l.status!=='alert'){ l.status='alert'; pushEvent(l,'alert', `${l.name} LNG tank level critical (${l.tankLevel.toFixed(0)}%) — replenishment required`); }
+    else if(l.tankLevel>=20 && !eqFault){ l.status='ok'; }
+    else if(eqFault){ l.status='alert'; }
+    if(Math.random()<0.05 && l.tankLevel<60){ l.tankLevel = Math.min(100, l.tankLevel+rand(20,40)); pushEvent(l,'ok', `LNG tanker delivery received at ${l.name} — tank replenished`); }
+  });
+  // Daughter station cascade depletion + dryout alerts + dispenser sales
+  daughterList.forEach(d=>{
+    d.cascadePressure = Math.max(0, d.cascadePressure - rand(0.3,1.1));
+    const prevKey = d._prevStatus || 'ok';
+    const key = dsStatusKey(d);
+    if(key==='alert' && prevKey!=='alert'){ pushEvent(d,'alert', `${d.name} cascade pressure critical (${d.cascadePressure.toFixed(0)}%)`); }
+    else if(key==='warn' && prevKey==='ok'){ pushEvent(d,'warn', `${d.name} cascade running low (${d.cascadePressure.toFixed(0)}%)`); }
+    d._prevStatus = key;
+    if(d.cascadePressure<15 && Math.random()<0.3){ d.cascadePressure = 100; pushEvent(d,'ok', `Fresh cascade delivered to ${d.name} — pressure restored`); }
+    maybeToggleEquipment(d.booster, d);
+    d.dispensers.forEach(dd=>{
+      if(dd.status==='active'){ dd.sideA += rand(0,0.6); dd.sideB += rand(0,0.6); }
+    });
+    d.salesHistory7d[6] = d.dispensers.reduce((s,dd)=>s+dd.sideA+dd.sideB,0);
+  });
+
+  updateKPIs();
+  const activeView = document.querySelector('.view.active').id;
+  if(activeView==='view-overview'){ initOverviewCharts(); renderLaugTable(); renderPipelineHealthBars(); renderAssetCountBars(); }
+  if(activeView==='view-map') renderMap();
+  if(activeView==='view-ga') renderGaCards();
+  if(activeView==='view-cgs') renderCgsList();
+  if(activeView==='view-drs') renderDrsList();
+  if(activeView==='view-mothers') renderMotherList();
+  if(activeView==='view-daughters') renderDaughterList();
+  if(activeView==='view-lng') renderLngList();
+  if(activeView==='view-pipeline') renderPipelineView();
+  if(activeView==='view-png') renderPngView();
+  if(activeView==='view-analytics') renderAnalyticsView();
+  if(activeView==='view-alarms') renderAlarmsView();
+}
+
+/* ============================================================
+   INITIAL PAINT
+   ============================================================ */
+(function seedEvents(){
+  const severities = ['alert','warn','ok','warn','alert','ok','warn','ok'];
+  severities.forEach((sev,i)=>{
+    const pool = [...daughterList, ...pipelineList.map(p=>({name:p.id, city:gaById(p.gaId).city}))];
+    const asset = randChoice(pool);
+    const msgs = {
+      alert:[`${asset.name} pressure critical — investigate`, `${asset.name} threshold breach detected`],
+      warn:[`${asset.name} trending toward warning threshold`, `${asset.name} minor deviation flagged`],
+      ok:[`${asset.name} reading normalised`, `${asset.name} check completed — nominal`],
+    };
+    eventLog.push({time:new Date(Date.now()-(severities.length-i)*rand(90,300)*1000).toTimeString().slice(0,8), msg:randChoice(msgs[sev]), severity:sev, asset, acked:false});
+  });
+})();
+updateKPIs(); renderFeed('feedOverview', eventLog.slice(0,30));
+requestAnimationFrame(()=>requestAnimationFrame(()=>{ initOverviewCharts(); renderLaugTable(); renderPipelineHealthBars(); renderAssetCountBars(); }));
+setInterval(simulateTick, 4000);
+</script>
+</body>
+</html>
