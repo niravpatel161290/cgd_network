@@ -392,11 +392,11 @@ tr:hover td{background:var(--panel-2); cursor:pointer;}
 
   <div class="navgroup">
     <div class="glabel">Network Assets</div>
-    <div class="navitem" data-view="cgs" data-label="City Gate Stations"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="8" width="16" height="12" rx="1.5"/><path d="M8 8V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3"/><path d="M9 13h6M9 16h6"/></svg><span>City Gate (CGS)</span></div>
-    <div class="navitem" data-view="drs" data-label="District Regulating"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 3"/></svg><span>District Reg. (DRS)</span></div>
-    <div class="navitem" data-view="mothers" data-label="Mother CNG Stations"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 21V10l8-6 8 6v11"/><path d="M9 21v-6h6v6"/></svg><span>Mother CNG</span></div>
+    <div class="navitem" data-view="cgs" data-label="City Gate Stations"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="8" width="16" height="12" rx="1.5"/><path d="M8 8V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3"/><path d="M9 13h6M9 16h6"/></svg><span>City Gate (CGS)</span><span class="badge-count" id="navCgsAlertCount">0</span></div>
+    <div class="navitem" data-view="drs" data-label="District Regulating"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 3"/></svg><span>District Reg. (DRS)</span><span class="badge-count" id="navDrsAlertCount">0</span></div>
+    <div class="navitem" data-view="mothers" data-label="Mother CNG Stations"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 21V10l8-6 8 6v11"/><path d="M9 21v-6h6v6"/></svg><span>Mother CNG</span><span class="badge-count" id="navMotherAlertCount">0</span></div>
     <div class="navitem" data-view="daughters" data-label="Daughter Stations"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21V9l9-6 9 6v12"/><path d="M9 21v-6h6v6"/></svg><span>Daughter Stations</span><span class="badge-count" id="navDryoutCount">0</span></div>
-    <div class="navitem" data-view="lng" data-label="LNG Stations"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11Z"/></svg><span>LNG Stations</span></div>
+    <div class="navitem" data-view="lng" data-label="LNG Stations"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11Z"/></svg><span>LNG Stations</span><span class="badge-count" id="navLngAlertCount">0</span></div>
   </div>
 
   <div class="navgroup">
@@ -990,6 +990,18 @@ function updateKPIs(){
   const pipeAlertCount = pipelineList.filter(p=>p.status==='alert').length;
   document.getElementById('navPipeAlertCount').textContent = pipeAlertCount>0?pipeAlertCount:'';
   document.getElementById('navPipeAlertCount').style.display = pipeAlertCount>0?'inline-block':'none';
+  const cgsAlertCount = cgsList.filter(c=>c.status==='alert').length;
+  document.getElementById('navCgsAlertCount').textContent = cgsAlertCount>0?cgsAlertCount:'';
+  document.getElementById('navCgsAlertCount').style.display = cgsAlertCount>0?'inline-block':'none';
+  const drsAlertCount = drsList.filter(d=>d.status==='alert').length;
+  document.getElementById('navDrsAlertCount').textContent = drsAlertCount>0?drsAlertCount:'';
+  document.getElementById('navDrsAlertCount').style.display = drsAlertCount>0?'inline-block':'none';
+  const motherAlertCount = motherList.filter(m=>m.status==='alert').length;
+  document.getElementById('navMotherAlertCount').textContent = motherAlertCount>0?motherAlertCount:'';
+  document.getElementById('navMotherAlertCount').style.display = motherAlertCount>0?'inline-block':'none';
+  const lngAlertCount = lngList.filter(l=>l.status==='alert').length;
+  document.getElementById('navLngAlertCount').textContent = lngAlertCount>0?lngAlertCount:'';
+  document.getElementById('navLngAlertCount').style.display = lngAlertCount>0?'inline-block':'none';
   document.getElementById('bellPing').style.display = alerts>0?'block':'none';
 }
 
